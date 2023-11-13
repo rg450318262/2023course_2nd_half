@@ -918,20 +918,110 @@ Sect. 3.3.3 of ISLR_v2 lists six potential problems with linear regression model
 
 ### Task c: My answer
 
-The six problems are 
 
-1. Non-linearity of the response-predictor relationships. 2. Correlation of error terms.
+We considered 4 of the 6 assumptions belows. 
+
+1. Non-linearity of the response-predictor relationships. 
+2. Correlation of error terms (`not considered since it usually plagues time series data`).
 3. Non-constant variance of error terms.
 4. Outliers.
 5. High-leverage points.
-6. Collinearity.
+6. Collinearity. (`not considered since it involves multiple x`).
+
+X and y in data 2 and data 4 do not show sufficient linearity in their relationship. And their variance do not appear to be constant. See plots below. 
+
+```{r}
+d1.linearity.check <- 
+  data.frame(fitted.values = predict(model1), residuals =model1$residuals, data = "data1")
+
+d2.linearity.check <- 
+  data.frame(fitted.values = predict(model2), residuals =model2$residuals, data = "data2")
+
+d3.linearity.check <-
+  data.frame(fitted.values = predict(model3), residuals =model3$residuals, data = "data3")
+
+d4.linearity.check <- 
+  data.frame(fitted.values = predict(model4), residuals =model4$residuals, data = "data4")
+
+linearity.check <- rbind(d1.linearity.check, d2.linearity.check, d3.linearity.check, d4.linearity.check)
 
 
+linearity.check |> 
+  ggplot(aes(x = fitted.values, y = residuals)) +
+  geom_point(color = "black") +
+  geom_smooth(method = "loess", color = "red")+
+  facet_wrap(~data) +
+  theme_bw()
+```
 
+Data 3 suffers an outlier, see the table below. Removal of x in row 3 resulted in 99.99% MSE change. 
 
+```{r}
+#This function remove an x from a dataset each time,  refit the model, and 
+#calculate the MSE change from initial MSE (all x reserved model). Outliers
+# that have large influence on the loss will be detected. 
 
+outlier.table <- NULL
+test.outlier <- function(data, y, x){
+  #create an empty table
+  outlier.table <- data.frame(
+    "Removed x" = NA, "removed x value"= NA, "removed y value"= NA,"MSE"= NA, "MSE reduction" = NA
+    )
+  #create id variable
+  data$id <- 1:nrow(data)
+  #fit the model for inital data
+  model.initial <- lm(y ~ x, data = data)
+  #derive the MSE
+  model.initial.mse <- mean(model.initial$residuals^2)
+  #save a series of values to the first row (intial model)
+  outlier.table[1,1] <- "no x removed (initial)"
+  outlier.table[1,2] <- NA
+  outlier.table[1,3] <- NA
+  outlier.table[1,4] <- model.initial.mse
+  outlier.table[1,5] <- 0
+  # loop once for each row
+  for (i in 1:nrow(data)){
+    #remove one row each time
+    data.removed <- data |> filter(id != i)
+    #re-fitted the n-1 model
+    model <- lm(y ~ x, data = data.removed)
+    #ave a series of values 
+    outlier.table[i+1, 1] <- paste0("x in row ", i, " removed")
+    outlier.table[i+1, 2] <- data[which(data$id == i), "x"]
+    outlier.table[i+1, 3] <- data[which(data$id == i), "y"]
+    outlier.table[i+1, 4] <- mean(model$residuals^2)
+    outlier.table[i+1,5] <- 1-mean(model$residuals^2)/model.initial.mse
+  }
+  #print the results
+  print(outlier.table)
+}
 
+test.outlier(d3, y, x) 
+```
 
+Besides, the plot below shows there is a high leverage data point in data 3 model.
+
+```{r}
+#install.packages('plotrix')
+library(plotrix)
+
+studentized.residual <- rstudent(model3)
+leverage <-hatvalues(model3)
+plot(studentized.residual ~leverage, main = "Leverge vs residual plot for data 3 model")
+draw.circle(x=0.236, y=1200, radius=0.005, border = "red")
+```
+
+# Problem 6 [6 points]
+
+Objective: properties of estimators and Bootstrap [Ch 3 & 5.2]
+
+## P6-Task a
+
+### Task a: Question
+
+Compute the standard errors for the regression coeﬀicient estimates for the data set d2.csv of the previous problem using bootstrap. Compare the bootstrap standard errors to the ones you got in Task A of the previous problem; which of the estimates is more trustworthy and why?
+
+### Task a: My answer
 
 
 
