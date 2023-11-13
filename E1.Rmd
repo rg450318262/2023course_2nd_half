@@ -723,7 +723,7 @@ d4 <-
 
 ## P5-Task a
 
-### ask a: Question
+### Task a: Question
 
 For each data set, fit an OLS linear regression and report:
 
@@ -734,6 +734,8 @@ For each data set, fit an OLS linear regression and report:
 • the R-squared value of the model.
 
 The slope term may be positive (or negative) with high confidence. Can you safely conclude that when x increases (or decreases), y tends to increase (and vice versa)?
+
+### Task a: My answer
 
 ```{r}
 library(broom)
@@ -965,7 +967,7 @@ outlier.table <- NULL
 test.outlier <- function(data, y, x){
   #create an empty table
   outlier.table <- data.frame(
-    "Removed x" = NA, "removed x value"= NA, "removed y value"= NA,"MSE"= NA, "MSE reduction" = NA
+    "Description" = NA, "x removed"= NA, "y removed"= NA,"MSE"= NA, "MSE reduction" = NA
     )
   #create id variable
   data$id <- 1:nrow(data)
@@ -996,7 +998,9 @@ test.outlier <- function(data, y, x){
   print(outlier.table)
 }
 
-test.outlier(d3, y, x) 
+test.outlier(d3, y, x) |> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 ```
 
 Besides, the plot below shows there is a high leverage data point in data 3 model.
@@ -1023,6 +1027,105 @@ Compute the standard errors for the regression coeﬀicient estimates for the da
 
 ### Task a: My answer
 
+The standard errors for regression coeﬀicient estimates for the data set d2 is 0.18017, generated from codes below.
 
+```{r}
+set.seed(1112)
+bootstrap_se <- function(data, n_bootstrap) {
+  n <- nrow(data)
+  coefs <- as.vector(NA)
+
+  for (i in 1:n_bootstrap) {
+    sample_indices <- sample(1:n, size = n, replace = TRUE)
+    bootstrap_sample <- data[sample_indices, ]
+    model <- lm(y ~ x, data = bootstrap_sample)
+    coefs[i] <- coef(model)[[2]]
+  }
+
+  return(sd(coefs))
+}
+bootstrap_se(d2, 1000)
+```
+
+The previous exercise derived std.error for slope as 0.15977, displayed by codes below.
+
+```{r}
+model.table |> 
+  dplyr::select(
+    model_No,
+    term,
+    std.error,
+  )|> 
+  filter(model_No == 2, term == "slope")
+```
+
+Comparing with each other, I found the SE from bootstrap is much larger than SE from conventional computation. Conventional SE computation are based on the assumptions of normality and homoscedasticity of residuals. However, I already discussed in task c of previous question that data 2 violates these assumptions. In such case, bootstrapping method, which does not assume normality and homoscedasticity, should work better and more trustworthy. 
+
+## P6-Task b
+
+### Task b: Question
+
+Describe briefly in your own words how the bootstrap algorithm computes the standard errors for the intercept and slope parameters in the task above.
+
+### Task b: my answer
+
+The standard error is the standard deviation of a sample population. It measures the accuracy with which a sample represents a population. Conventional method uses sample statistics to approximate population parameter and computes SE. In task a, instead, I calculated SE for regression coefficient in a bootstrapping way: I re-sampled n observations with replacement from d2 data for 1000 times. The resulting 1000 sample were fitted using linear regression, respectively. This gave me 1000 'population' of regression coefficients. Computing the Standard Deviation for them and I got the SE, according to definition of SE described above. 
+
+## P6-Task c: 
+
+### Task c: Question
+
+In bootstrap, you sample 𝑛 data points from a population of 𝑛 points with replacement. Argue that the probability that the 𝑗th observation is not in the bootstrap sample is about 0.368 when 𝑛 is very large.
+
+### Task c: my answer
+
+Since replacement is allowed, 
+
+$$
+P(\text{not picked in any draw}) = \left(1 - \frac{1}{n}\right)^n
+$$
+Then, 
+
+$$
+\\lim_{n \to \infty} \left(1 - \frac{1}{n}\right)^n = \frac{1}{\lim_{n \to \infty} \left(1 + \frac{1}{n}\right)^n} = \frac{1}{e} 
+$$
+
+So we have:
+
+$$
+\frac{1}{e} \approx \frac{1}{2.71828} \approx 0.3678
+$$
+
+#Problem 7
+
+## P7-Task a
+
+### Task a: Questions
+
+Write a learning diary of the topics of lectures 1-4 and this exercise set.
+
+What did I learn? What did I not understand? Was there something relevant for other studies or (future) work? The length of your reply should be 1-3 paragraphs of text. You can also give feedback on the course.
+
+### Task a: My answer
+
+I am from the disciplines of medicine and educational science. I used to use most of the techniques in chapter 1-4 in my studies, by following how the analyses were done in publications, without realizing they are rooted in the power of machine learning. Thanks to these sessions, I finally systematically learnt them and got my mind much better organzied. 
+
+I used to be confused about training, validation and testing data sets, but now I see how they relate to each other in a more structured way.
+
+I used to select predictors in a model using step-wise method. Now I get a bigger picture that it belongs to subset selection and there are some competing techniques. And I see the reason why it was developed: for the sake of efficiency. 
+
+I used to determine the polynomial degree of my model by observing the lowess curve with my bare eyes, but now I get a more powerful data-driven approach: polynomial degree comparison and selection with loss function.
+
+Gladly that this course is not that mathematically heavy, at least until now, or else I might not be able to follow. But still, in the sessions I found some math blind spots (such as optimization) and I will make them up by joining more basic level courses, after this course. 
+
+## P7-Task b
+
+### Task b: Question
+
+Give an estimate of the hours used in solving the problems in this exercise set.
+
+### Task b: My answer
+
+I used a full day from 8 to 17:00 getting 4 questions done. I used another 3~4 hours the other day to get the remaining done. (I haven't done question 4 yet; I might quit it)
 
 
