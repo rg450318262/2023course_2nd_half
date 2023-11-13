@@ -1,0 +1,22 @@
+---
+title: "Machine learning course work"
+author: "Rong Guang"
+output:
+  html_document:
+    fig_caption: yes
+    theme: flatly
+    highlight: haddock
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_section: no
+---
+
+***
+
+# E1
+
+```{r child = "E1.Rmd"}
+```
+  
+***
