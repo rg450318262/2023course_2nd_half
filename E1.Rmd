@@ -1,7 +1,8 @@
 ---
 title: "E1 assignment"
 output: 
-   html_document
+   html_document:
+     code_folding: hide
 date: "2023-11-12"
 ---
 
@@ -131,7 +132,7 @@ p1 |>
   pairs(main = "Scatter plot matrix of 3 variables")
 ```
 
-# Problem 2
+# Problem 2 [6 points]
 
 In this problem, you will fit regression models and study their losses. One of the purposes of this problem - in addition to theory - is to make you more comfortable with various machine learning workflows. Sections 5.1 and 5.3.2 (lab section) of ISLR_v2 contain helpful information for solving this problem. Tasks a-b use a synthetic data set, and Tasks c-d use a real data set:
 
