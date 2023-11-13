@@ -208,6 +208,83 @@ window.buildTabsets = function(tocID) {
 };
 
 </script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan, pre.julia, pre.foldable');
+  rCodeBlocks.each(function() {
+    // skip if the block has fold-none class
+    if ($(this).hasClass('fold-none')) return;
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    var showThis = (show || $(this).hasClass('fold-show')) && !$(this).hasClass('fold-hide');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (showThis ? 'Hide' : 'Show') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm code-folding-btn pull-right float-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-bs-toggle', 'collapse') // BS5
+        .attr('data-target', '#' + id)
+        .attr('data-bs-target', '#' + id)   // BS5
+        .attr('aria-expanded', showThis)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // show the div if necessary
+    if (showThis) div.collapse('show');
+
+    // update state of button on show/hide
+    //   * Change text
+    //   * add a class for intermediate states styling
+    div.on('hide.bs.collapse', function () {
+      showCodeText.text('Show');
+      showCodeButton.addClass('btn-collapsing');
+    });
+    div.on('hidden.bs.collapse', function () {
+      showCodeButton.removeClass('btn-collapsing');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+      showCodeButton.addClass('btn-expanding');
+    });
+    div.on('shown.bs.collapse', function () {
+      showCodeButton.removeClass('btn-expanding');
+    });
+
+  });
+
+}
+</script>
 <style type="text/css">.hljs-literal {
 color: #990073;
 }
@@ -2787,6 +2864,9 @@ display: none;
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -2803,6 +2883,14 @@ display: none;
 
 <div id="header">
 
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
 
 
 <h1 class="title toc-ignore">E1 assignment</h1>
@@ -2811,8 +2899,8 @@ display: none;
 </div>
 
 
-<div id="poblem-1-6-points" class="section level1">
-<h1>Poblem 1 <em>[6 points]</em></h1>
+<div id="problem-1-6-points" class="section level1">
+<h1>Problem 1 <em>[6 points]</em></h1>
 <p>In this problem, you will preprocess and explore a data set about
 atomic structures of molecules. The data set p1.csv is a subset of the
 GeckoQ data set from the term project.</p>
@@ -2943,8 +3031,8 @@ seaborn.pairplot(). In R, you can use pairs().</p>
 </div>
 </div>
 </div>
-<div id="problem-2" class="section level1">
-<h1>Problem 2</h1>
+<div id="problem-2-6-points" class="section level1">
+<h1>Problem 2 [6 points]</h1>
 <p>In this problem, you will fit regression models and study their
 losses. One of the purposes of this problem - in addition to theory - is
 to make you more comfortable with various machine learning workflows.
@@ -3745,10 +3833,10 @@ abline(model4, lwd =1, col = &quot;blue&quot;)</code></pre>
 the fitted lines are roughly the same.</p>
 </div>
 </div>
-<div id="task-c" class="section level2">
-<h2>Task c</h2>
-<div id="question-task-c" class="section level3">
-<h3>Question: task c</h3>
+<div id="p5-task-c" class="section level2">
+<h2>P5-Task c</h2>
+<div id="task-c-question-2" class="section level3">
+<h3>Task c: Question</h3>
 <p>Sect. 3.3.3 of ISLR_v2 lists six potential problems with linear
 regression models. Which of the six problems would (potentially) apply
 to each dataset? What tricks and plots did you use to detect and
@@ -3756,6 +3844,18 @@ diagnose the problems? Produce at least one diagnostic plot that shows
 these problems (other than just plotting x vs y, which you can do here
 because the data is 1-dimensional and which would not work for
 higher-dimensional data sets).</p>
+</div>
+<div id="task-c-my-answer-2" class="section level3">
+<h3>Task c: My answer</h3>
+<p>The six problems are</p>
+<ol style="list-style-type: decimal">
+<li>Non-linearity of the response-predictor relationships. 2.
+Correlation of error terms.</li>
+<li>Non-constant variance of error terms.</li>
+<li>Outliers.</li>
+<li>High-leverage points.</li>
+<li>Collinearity.</li>
+</ol>
 </div>
 </div>
 </div>
@@ -3793,6 +3893,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
 
 
 <!-- dynamically load mathjax for compatibility with self-contained -->

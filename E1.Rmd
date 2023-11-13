@@ -10,7 +10,7 @@ date: "2023-11-12"
 knitr::opts_chunk$set(collapse = TRUE, warning = F, message = F)
 ```
 
-# Poblem 1 *[6 points]*
+# Problem 1 *[6 points]*
 
 In this problem, you will preprocess and explore a data set about atomic structures of molecules. The data set p1.csv is a subset of the GeckoQ data set from the term project.
 
@@ -910,13 +910,21 @@ _commonalities I noticed is:_
 
 Even though the points are distributed distinctly across the plots, the fitted lines are roughly the same. 
 
-## Task c
+## P5-Task c
 
-### Question: task c
+### Task c: Question
 
 Sect. 3.3.3 of ISLR_v2 lists six potential problems with linear regression models. Which of the six problems would (potentially) apply to each dataset? What tricks and plots did you use to detect and diagnose the problems? Produce at least one diagnostic plot that shows these problems (other than just plotting x vs y, which you can do here because the data is 1-dimensional and which would not work for higher-dimensional data sets).
 
+### Task c: My answer
 
+The six problems are 
+
+1. Non-linearity of the response-predictor relationships. 2. Correlation of error terms.
+3. Non-constant variance of error terms.
+4. Outliers.
+5. High-leverage points.
+6. Collinearity.
 
 
 
