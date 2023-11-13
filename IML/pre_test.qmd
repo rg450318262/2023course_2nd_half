@@ -1,0 +1,453 @@
+---
+title: "Deep learning introduction"
+subtitle: "pre course test"
+author: "Rong Guang"
+date: 2023-10-31
+date-format: "D MMM YYYY"
+published-title: "Created"
+format: 
+  html
+toc: true
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+# Problem 1
+
+## Question (copied from .pdf)
+
+Topic: fundamental data analysis, software tools
+A mystery data set in file x.csv has 2048 data items (rows), each having 32 real-valued variables (columns). The first row in the file gives the names of the variables.
+Task a
+Write a small program in R or Python that
+1. loads the data set in x.csv,
+2. finds the two variables having the largest variances and
+3. makes a scatterplot of the data items using these two variables.
+Your program must read the dataset file from the file and then produce the plot without user intervention.
+Your program must work correctly for any dataset file of a similar format. For example, if you permute the rows or columns of the data file, you should get the same output because ordering rows or columns should not affect the result.
+Attach a printout of your program code and the scatterplot it produces as an answer to this problem.
+
+## My answer
+
+### Loads the data
+
+```{r}
+library(here)
+library(tidyverse)
+myth <- read.csv(file.path(here(), 'DeepL',"data", "x.csv"))
+```
+
+### Finds the two variables having the largest variances
+
+```{r}
+large.vars <- 
+  myth |> 
+  map(var) |> 
+  unlist() |> 
+  data.frame(col.var = _) |> 
+  arrange(desc(col.var)) |> 
+  mutate(id = row_number()) |> 
+  filter(id %in% c(1,2))
+
+#save the variable names into an object
+large.var.names <- rownames(large.vars)
+
+#the largest 2 variables are:
+large.var.names
+```
+
+### makes a scatterplot of the data items using these two variables.
+
+```{r}
+library(ggplot2)
+data.scatter <- myth |> 
+  select(
+    one_of(
+      large.var.names
+      )
+    ) 
+data.scatter |> 
+  ggplot(aes(data.scatter[,1], data.scatter[,2])) +
+  geom_point()
+
+```
+
+# Problem 2 
+
+## Question (copied from .pdf)
+
+Topic: matrix calculus
+Let A be a 2×2 matrix given by A11 =1,A12 =A21 =2,and A22 =3.14159.
+Task a
+For the matrix A:
+1. Solve numerically and report the eigenvalues λi and column eigenvectors xi, where i ∈ {1, 2}. Normalise the eigenvectors to unit length (if necessary).
+2. Verify that the eigenvectors are orthonormal.
+3. Show, by performing the numerical matrix computation, that A satisfies the equation A = P2i=1 λixixiT .
+Hints
+You can use R or Python to find eigenvectors and eigenvalues and do matrix and vector multiplications.
+Let A ∈ Rn×n be a symmetric square matrix. λ ∈ R is an eigenvalue of A and a column vector x ∈ Rn is the corresponding eigenvector if Ax = λx. Assume A has n orthonormal eigenvectors xi ∈ Rn and corresponding eigenvalues λi ∈ R, where i ∈ {1, . . . , n}. The fact that the eigenvectors are orthonormal means that xiT xi = 1 andxiTxj =0ifi̸=j.
+About the topic
+Vector/matrix operations and eigenvalues are prevalent in machine learning. The course uses them extensively. Reading material: Chapters 2, 3, and 4 of MML and FCLA.
+Prerequisite courses: MAT11009 Basics of mathematics in machine learning I or MAT11002 Linear algebra and matrices I or FYS1012 Mathematics for physicists III.
+Other helpful courses: MAT21001 Linear algebra and matrices II, MAT22011 Linear algebra and matrices III, MAT21019 Applications in matrices.
+
+## My answer
+
+### Solve numerically and report the eigenvalues λi and column eigenvectors xi, where i ∈ {1, 2}. Normalise the eigenvectors to unit length (if necessary).
+
+
+$$
+A = \begin{pmatrix}
+1 & 2 \\
+2 & 3.14159
+\end{pmatrix}
+$$
+
+To find the eigenvalues (\( \lambda \)), we solve the characteristic equation:
+
+$$
+\text{det}(A - \lambda I) = 0
+$$
+This results in:
+
+$$
+\text{det}\left(\begin{pmatrix}
+1 - \lambda & 2 -0 \\
+2-0 & 3.14159 - \lambda
+\end{pmatrix}\right) = 0
+$$
+$$
+(1 - \lambda)\times(3.14159 - \lambda) - 2\times 2 = 0
+$$
+$$
+3.14159 - \lambda - 3.14159\lambda + \lambda^2 - 4 = 0
+$$
+
+
+$$
+\lambda^2 - 4.14159\lambda - 0.85841 = 0
+$$
+
+Solve the equation:
+
+```{r}
+coefficients <- c(-0.85841, -4.14159, 1) 
+roots <- polyroot(coefficients)
+roots
+```
+
+To find the eign-vector for $$ \lambda_1 = 4.3403 $$:
+
+$$
+\begin{pmatrix}
+1-4.33941 & 2 \\
+2 & 1.14159-4.33941
+\end{pmatrix} \begin{pmatrix} x_1 \\ x_2 \end{pmatrix} = \begin{pmatrix} 0 \\ 0 \end{pmatrix}
+$$
+
+Solving this, one possible normalized eigen-vector corresponding to $\lambda_1$ is $\frac{1}{\sqrt{5}}\begin{pmatrix} 1 \\ 2 \end{pmatrix}$.
+
+For $\lambda_2 = -0.1987$:
+
+$$
+\begin{pmatrix}
+1.1987 & 2 \\
+2 & 3.3403
+\end{pmatrix} \begin{pmatrix} x_1 \\ y_2 \end{pmatrix} = \begin{pmatrix} 0 \\ 0 \end{pmatrix}
+$$
+
+
+Oops, Solving this equation I get all x1, y1, x2, y2 equals to 0. I need to consider the fact that x and y are dependent and normalise the eigenvectors to unit length.
+
+```{r}
+solve_eigenvector <- function(A, eigenvalue) {
+  B <- A - eigenvalue * diag(2)
+  null_space <- nullspace(B)
+  return(null_space)
+}
+
+nullspace <- function(A, eps = 1e-10) {
+  d <- svd(A)$d
+  r <- sum(d > eps)
+  ker <- svd(A)$v[, (r + 1):ncol(A), drop = FALSE]
+  return(ker)
+}
+A <- matrix(c(1,2,2,3.14159), nrow = 2, ncol =2, byrow =T)
+eigenvector1 <- solve_eigenvector(A, roots[1])
+eigenvector2 <- solve_eigenvector(A, roots[2])
+```
+
+Normalize to unit length
+
+```{r}
+normalize_vector <- function(vector) {
+  return(vector / sqrt(sum(vector^2)))
+}
+
+normalized_eigenvector1 <- normalize_vector(eigenvector1)
+normalized_eigenvector2 <- normalize_vector(eigenvector2)
+normalized_eigenvector1;normalized_eigenvector2
+```
+
+### Verify that the eigenvectors are orthonormal.
+
+```{r}
+# if the result is 1s, they are verified (half-way);
+sqrt(normalized_eigenvector1[1]^2+normalized_eigenvector1[2]^2)
+sqrt(normalized_eigenvector2[1]^2+normalized_eigenvector2[2]^2)
+```
+
+```{r}
+# if they have same absolute value but different signs, they are verified.
+normalized_eigenvector1[1]*normalized_eigenvector1[2];normalized_eigenvector2[1]*normalized_eigenvector2[2]
+```
+
+### Show, by performing the numerical matrix computation, that A satisfies the equation A = P2i=1 λixixiT .
+
+```{r}
+#when i = 1, calculate the resulting matrix
+i1 <- roots[1]*normalized_eigenvector1%o%t(normalized_eigenvector1)
+  matrix(t(normalized_eigenvector1), ncol = 2, byrow = T)
+#when i = 2, calculate the resulting matrix
+i2 <- roots[2]*normalized_eigenvector2%o%t(normalized_eigenvector2)
+#add two matrix up, we get the exact same matrix with inital matrix A
+i1+i2
+```
+
+# Problem 3
+
+## Question (copied)
+
+Topic: algebra, probabilities, random variables
+Let Ω be a finite sample space, i.e., the set of all possible outcomes. Let P (ω) ≥ 0 be the probability of an outcome ω ∈ Ω. The probabilities are non-negative, and they sum up to unity, i.e., Pω∈Ω P (ω) = 1. Let X be a real-valued random variable, i.e., a function X : Ω → R which associates a real number X(ω) with each of the (random) outcomes ω ∈ Ω.
+The expectation of X is defined by E [X] = Pω∈Ω P (ω)X(ω). The variance of X is defined by Var[X] = E h(X − μ)2i, where μ = E [X].
+Task a
+Using the definitions above, prove that E is a linear operator. Task b
+Using the definitions above, prove that the variance can also be written as Var[X] = E X2 − E [X]2. Hints
+An operator L is said to be linear if for every pair of functions f and g and scalar t ∈ R, (i) L[f +g] = L[f ]+L[g] and (ii) L[tf] = tL[f]. The proof in task b is short if you use linearity.
+About the topic
+Random variables and expectations are central concepts in machine learning. The course uses them extensively. Reading material: Chapter 6 of MML and PI.
+Prerequisite courses: MAT11015 Basics of mathematics in machine learning II or MAT12003 Probability I or FYS1014 Statistical analysis of observations.
+Other useful courses: MAT22001 Probability IIa.
+
+
+## My Answer 
+
+### Task a
+
+To demonstrate that the expectation operator \( E \) is linear, it must satisfy two conditions:
+
+for any constant a 
+
+$$
+ E[aX] = aE[X]
+$$ 
+for any two random variables
+
+$$
+ E[X + Y] = E[X] + E[Y]
+$$
+
+
+The expectation of a random variable $X$ is defined as 
+
+$$
+E[X] = \sum_{\omega \in \Omega} P(\omega)X(\omega)
+$$
+For the first condition:
+
+$$
+\begin{align}
+E[aX]=& \sum_{\omega \in \Omega} P(\omega)(aX(\omega)) \\
+=& a \sum_{\omega \in \Omega} P(\omega)X(\omega)\\
+=& aE[X]\quad\quad\quad
+\end{align}
+$$
+
+For the second condition:
+
+
+$$
+\begin{align}
+E[X + Y] =& \sum_{\omega \in \Omega} P(\omega)(X(\omega) + Y(\omega)) \\
+=& \sum_{\omega \in \Omega} P(\omega)X(\omega) + \sum_{\omega \in \Omega} P(\omega)Y(\omega) \\
+=& E[X] + E[Y]
+\end{align}
+$$
+
+### Task b
+
+$$
+\begin{align}
+Var[X] =& E[X^2] - (E[X])^2 \\
+ =& E[(X - \mu)^2]\\
+ =& E[X^2 - 2\mu X + \mu^2]\\
+ =& E[X^2] - 2\mu E[X] + \mu^2\\
+ =& E[X^2] - 2\mu^2 + \mu^2\\
+ =& E[X^2] - (E[X])^2\\
+\end{align}
+$$
+
+# Problem 4
+
+## Question (copied)
+
+The conditional probability ("X given Y ") is defined by P (X | Y ) = P (X ∧ Y )/P (Y ), where P () is the probability that is true and X and Y are Boolean random variables that can have values of true or false, respectively. The marginal probability P(Y ) can also be written as P(Y ) = P(X ∧ Y ) + P(¬X ∧ Y ), where ¬X denotes logical negation.
+
+## My answer
+
+### Task a
+
+According to the answer and also the standard definition of conditional probability, we have:
+
+$$
+P(X|Y) = \frac{P(X \land Y)}{P(Y)} \\
+P(Y|X) = \frac{P(X \land Y)}{P(X)} \\
+$$
+
+This means we have:
+
+$$
+P(X \land Y) = P(X|Y) \times P(Y) \\
+P(X \land Y) = P(Y|X) \times P(X) \\
+$$
+
+Then of course,
+
+$$
+P(X|Y) \times P(Y) = P(Y|X) \times P(X) \\
+$$
+
+Finally,
+
+$$
+P(X|Y) = \frac{P(Y|X) \times P(X)}{P(Y)}
+$$
+
+
+### Task b
+
+Define the following Boolean random variables:
+
+$$
+    P(A): \text{Person is allergic to pollen.}\\
+    P(T): \text{Test result is positive.}
+$$
+We want to solve for
+
+$$
+P(A | T)
+$$
+
+The following probabilities are given:
+
+$$
+    ( P(A) = 0.2 ) \\
+    ( P(T | \lnot A) = 0.23 ) \\
+    ( P(\lnot T | A) = 0.15 ) \\
+$$
+
+Both A and T are binary, which means we have:
+
+$$
+    ( P(\lnot A) = 1-0.2 = 0.8 ) \\
+    ( P(\lnot T | \lnot A) = 1 - 0.23 = 0.77) \\
+    ( P(T | A) = 1 - 0.15 = 0.85 ) \\
+$$
+
+Base on law of total probability, we have 
+
+$$
+\begin{align}
+P(T) &= P(T | A)P(A) + P(T | \lnot A)P(\lnot A)\\
+&= 0.85 \\
+&= 0.354
+\end{align}
+$$
+```{r}
+0.85 * 0.2 + 0.23 * 0.8
+```
+
+Now we can solve:
+
+$$
+\begin{align}
+P(A | T) =& \frac{P(T | A) \times P(A)}{P(T)}\\
+=& \frac{0.85 \times 0.2}{0.355}\\
+\approx & 47.83\%
+\end{align}
+$$
+
+#Problem 5
+
+## Question (copied)
+
+Topic: optimisation
+Assume you are given six constants xi ∈ R and yi ∈ R, where i ∈ {1,2,3}, and a function f(b) = P3i=1 (bxi − yi)2.
+Task a
+By using derivatives, find the value of b ∈ R that minimises the value of f(b). Task b
+What conditions must the constants xi and yi , where i ∈ {1, 2, 3}, satisfy for the function to have a unique and finite minimum?
+
+## My answer
+
+### task a
+
+
+To find the value of $f(b)$ that minimizes the function $f(b)$, take the derivative of $f(b)$ with respect to $b$, set it equal to zero, and solve for $b$. The derivative of $f(b)$ with respect to $b$ is:
+
+$$
+f'(b) = \sum_{i=1}^{3} 2(b x_i - y_i) x_i
+$$
+
+Setting $f'(b) = 0)$ gives:
+
+$$
+0 = \sum_{i=1}^{3} 2(b x_i - y_i) x_i\\
+
+0 = \sum_{i=1}^{3} (b x_i^2 - y_i x_i)\\
+
+b \sum_{i=1}^{3} x_i^2 = \sum_{i=1}^{3} y_i x_i\\
+
+b = \frac{\sum_{i=1}^{3} y_i x_i}{\sum_{i=1}^{3} x_i^2}
+$$
+
+### Task b
+
+1. The derivative $f′'(b)$ >0 
+
+2. $b \neq 0$
+
+# Problem 6
+
+## Question (copied)
+
+The Fibonacci numbers F(i) are defined for i ∈ N recursively as F(i + 2) = F(i + 1) + F(i), with F(1) = F(2) = 1.
+
+## My answer
+
+### Task a
+
+Algorithm Fib(n)
+    Input: An integer n
+    Output: An array containing Fibonacci numbers from F(1) to F(n)
+    
+    FibArray =  as.array()
+    N = input(n)
+    FibArray[1] = 1
+    FibArray[2] = 1
+
+    for i in 3:N
+        FibArray[i] = FibArray[i-1] + FibArray[i-2]
+
+    return FibArray
+
+
+
+### Task b
+
+This function has an iteration that iterates over an input size of n, it has a time complexity of order O(n).
+
+
+
+

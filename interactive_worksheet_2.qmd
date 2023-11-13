@@ -1,0 +1,672 @@
+---
+title: "Week 2 worksheet"
+subtitle: "Data Analysis in R for Education Research"
+author: "Rong Guang"
+date: 2023-10-10
+date-format: "D MMM YYYY"
+published-title: "Created"
+format: html
+toc: true
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+# Instructions
+
+-   This is an "Quarto Document" file. It contains the text, code and results of your analysis.
+-   The executable code is enclosed within **R code chunks**. You can execute them from the "play button" above the chunk or by pressing `Ctrl`+`Shift`+`Enter`.
+-   When finished the document can be published with "Render".
+-   Publishing will execute all code and produce an html page that can be viewed with a web browser.
+-   More information about the Quarto format is included below under "About Quarto documents".
+
+## About Quarto documents
+
+This is an Quarto document that can be edited in RStudio visual editor.
+Quarto is a versatile system for authoring e.g.
+HTML, PDF, and MS Word documents.
+A Quarto document can contain executable code blocks and their output.
+Quarto is similar to the older R Markdown format.
+Quarto douments are saved as a .qmd file, which can be edited in RStudio or any other text editor.
+For full instructions on Quarto, see <https://quarto.org/docs/guide/>
+
+The R code in Quarto documents is contained inside so-called "code chunks", surrounded by three grave accents `` ` `` ("backticks"), and beginning with `{r}`.
+You can create a code chunk in multiple ways:
+
+-   using the keyboard shortcut `Ctrl`+`Alt`+`I`
+-   clicking the "Insert" button (small green plus-c symbol on the top right corner of the code editor)
+-   from the RStudio menu *Code -\> Insert Chunk*
+-   in the visual editor, choosing *Insert -\> Code Block* at the top of the editor
+-   in the source editor, typing three backticks and `{r}`
+
+You can execute all the code in the current chunk by pressing `Ctrl`+`Shift`+`Enter` or by clicking the small play button (green arrow) on the top right corner of the chunk.
+Alternatively, you can execute single commands inside a chunk normally by pressing `Ctrl`+`Enter`.
+
+Try executing the following chunk:
+
+```{r}
+data(iris)
+summary(iris)
+```
+
+The Quarto document begins with a so-called YAML header, where you can write the title of the document and set different options.
+
+When you are done with your analysis, you can publish the Quarto document by clicking the **Render** button.
+All code blocks will be executed and a document will be generated that includes both the textual content as well as the output of all code blocks.
+Usually, the document format is html, which can be viewed with a web browser, but other formats can also be used.
+
+## Topics to learn
+
+-   Working with Quarto documents
+-   Calculating aggregates
+-   Modifying tables
+-   Changing between long and wide format
+-   Visualising data
+-   Saving data and results
+
+# Setting up
+
+We start by
+
+1.  loading the necessary libraries
+2.  loading the "tobit" dataset
+3.  preprocessing the data by adding a "pass" indicator column.
+
+These steps are included in a "setup" code block.
+The idea of a setup block is that it is executed automatically by RStudio when you execute another block for the first time.
+If you include all the setup steps, such as loading packages and data, in a setup block, you can continue working where you left off without having to execute previous steps.
+
+```{r setup}
+# Note: This is a setup chunk (marked 'setup' in the starting brackets).
+# A setup chunk will be executed automatically when it is changed or when resuming work.
+# A setup chunk is used for library and data loading, which need to be done each time when resuming work on the notebook.
+
+library(tidyverse)
+library(here)
+
+tobit <- read_csv(paste0(here(), "/", "data", "/", "tobit.csv")) |>
+  mutate(pass = (apt >= 600))
+```
+
+After executing the above block, check that the tobit dataset loaded correctly in the environment.
+Note that you may get some messages about decimals and column specification etc. in the console.
+These are merely informational messages.
+Error messages are clearly marked as such.
+
+Pay attention to new messages in the Console, as sometimes they can give you information why something might not work as expected.
+However, if everything is working correctly, you can often ignore the messages.
+
+-   Normal messages give you some insight into what the program did, and they are usually nothing to worry about.
+-   Warning messages are more important, and indicate there might be some problems, but the code will run and the message can often be disregarded.
+-   Error messages mean that the code could not run. When there is an error in a code block, it will be marked with a red margin.
+
+# Calculating aggregates
+
+## Summarising
+
+We have already seen how to use `summarise` for calculating aggregates.
+
+```{r}
+tobit |>
+  summarise("Read, mean" = mean(read),
+            "Read, SD" = sd(read),
+            "Math, mean" = mean(math),
+            "Math, SD" = sd(read),
+            "N" = n())
+```
+
+The function `n()` gives the sample size.
+The aggregates can be grouped, e.g., according to programme.
+
+```{r}
+tobit |>
+  group_by(prog) |>
+  summarise("Read, mean" = mean(read),
+            "Read, SD" = sd(read),
+            "Math, mean" = mean(math),
+            "Math, SD" = sd(read),
+            "N" = n())
+```
+
+## Missing values
+
+Aggregating in R is very sensitive to missing values.
+As an example, let us add an observation with missing values to our data set and see what happens.
+
+```{r}
+tobit |>
+  add_row() |>  # adding an empty row
+  summarise("Read, mean" = mean(read),
+            "Read, SD" = sd(read),
+            "Math, mean" = mean(math),
+            "Math, SD" = sd(read),
+            "N" = n())
+```
+
+Using the option `na.rm = TRUE` works well with aggregating operations, but not with the counting function `n()`.
+To count the missing values, you can use `sum(is.na(...))`.
+
+```{r}
+tobit |>
+  add_row() |>  # adding an empty row
+  summarise("Read, mean" = mean(read, na.rm = TRUE),
+            "Read, SD" = sd(read, na.rm = TRUE),
+            "Read, missing" = sum(is.na(read)),
+            "Math, mean" = mean(math, na.rm = TRUE),
+            "Math, SD" = sd(read, na.rm = TRUE),
+            "Math, missing" = sum(is.na(read)),
+            "N" = n())
+```
+
+## TASK: Aptitude associated with programme
+
+> *Question*: Is aptitude associated with a specific programme?
+
+Investigate by comparing the means of aptitude values grouped by programme.
+
+```{r}
+# Write your code here
+tobit |> 
+  group_by(prog) |> 
+  summarise("aptitude, mean" = mean(apt, na.rm = T)) 
+```
+
+# Modifying tables
+
+## Selecting rows
+
+The `select()` function is used to select columns, either by name or position.
+
+```{r}
+tobit |>
+  select(read, math)
+
+tobit |>
+  select(3, 4)
+```
+
+For selecting among large numbers of columns, helper functions such as `starts_with()`, `ends_with()` and `contains()` are available.
+All selection options can also be combined in the same call.
+
+```{r}
+tobit |>
+  select(starts_with("p"))
+
+tobit |>
+  select(starts_with(c("ma", "p")),
+         apt)
+```
+
+## Filtering columns
+
+The function `filter()` is used to choose rows by some criteria.
+The criteria can also be combined.
+
+```{r}
+tobit |>
+  filter(prog == "vocational",
+         apt >= 700)
+```
+
+For more complicated filtering, you can use logical operations.
+
+```{r}
+tobit |>
+  filter((prog %in% c("general", "vocational") & apt > 780 & math > 70) | 
+           (prog == "academic" & math >= 62))
+```
+
+### Logical notation
+
+The following table contains logical operators useful for filtering.
+
+| Notation | Meaning                  | Example                            |
+|:---------|:-------------------------|:-----------------------------------|
+| `>`      | greater than             | apt \> 780                         |
+| `<`      | less than                | apt \< 780                         |
+| `>=`     | greater than or equal to | apt \>= 780                        |
+| `<=`     | less than or equal to    | apt \<= 780                        |
+| `==`     | equal to                 | prog == "vocational"               |
+| `!=`     | not equal to             | prog != "vocational"               |
+| `%in%`   | contained in             | prog %in% c("academic", "general") |
+| `|`      | or                       | apt \> 780 \| math \> 65           |
+| `&`      | and                      | apt \> 780 & prog == "vocational"  |
+| `!`      | not                      | !(apt \> 780)                      |
+
+## Adding or mutating columns
+
+The `mutate()` function is used to add new columns.
+
+```{r}
+tobit |>
+  mutate("combined" = read + math)
+```
+
+If the column name is already in use, the old column will be replaced.
+Let us standardise the reading and mathematics scores by dividing them by standard deviation.
+We give the resulting data set a new name.
+
+```{r}
+tobit_standardised <- tobit |>
+  mutate(math = math / sd(math),
+         read = read / sd(read))
+
+DT::datatable(tobit_standardised)
+```
+
+Note that when making changes to a data set, it is a good practice to assign a new name to the resulting table.
+That way you can still refer to the old data set, for example, if you change your mind about the modification you made.
+
+## TASK: Creating a modified data set
+
+Create a new data set, called "tobit_standard_pass", that contains the id, programme and aptitude scores from tobit, with the following criteria:
+
+-   the aptitude scores should be standardised by dividing by standard deviation
+-   include only observations from the academic and vocational programmes
+-   include only observations with standardised aptitude above 7.
+
+Try to combine all steps into one command using the pipe.
+
+```{r}
+# Write your code here
+tobit_standard_pass <- 
+  tobit |> 
+  dplyr::select(
+    id, 
+    prog, 
+    apt
+    ) |> 
+  mutate(
+    apt_stdized = apt/sd(apt, na.rm = T)
+  ) |> 
+  filter(
+    prog %in% c("academic", "vocational") &
+    apt_stdized>7
+  ) 
+```
+
+# Long and wide format
+
+In the tobit data set, reading and mathematics scores of each individual are reported in the same row, in separate columns.
+This kind of data arrangement is called "wide", because there are several observations (reading and mathematics scores) in one row, so that these data make the table two columns wider.
+
+Sometimes it is useful to rearrange the data, so that all observations are in one column.
+This means that the table will become "long", as it will take a twice longer column to contain all the data from two columns.
+This kind of arrangement is also sometimes called "tidy", because each row corresponds to exactly one observation.
+
+Changing to the long format is done by using the `pivot_longer()` function.
+We focus on the reading and mathematics scores, so we first select only the necessary columns.
+
+```{r}
+tobit_long <- tobit |>
+  select(id, read, math, prog) |>
+  pivot_longer(cols = c(read, math),
+               names_to = "subject",
+               values_to = "score")
+```
+
+Inspect the resulting data set "tobit_long".
+You will notice that both reading and mathematics scores are now in one column, called "score".
+Moreover, there is an extra column called "subject" to denote which score is for reading and which for mathematics.
+You will also notice that each id now appears twice in the table.
+
+Moving from long format to wide is done with `pivot_wider()`.
+
+```{r}
+tobit_wide <- tobit_long |>
+  pivot_wider(names_from = subject,
+              values_from = score)
+```
+
+Compare the result with the original tobit data frame.
+
+Pivoting wider is more complicated than pivoting longer, since R has to guess how many new columns it needs to produce and which observations belong in the same row.
+It does this by counting how many different values there are in the "names_from" column, and by looking at which rows have identical values in the remaining columns ("id" and "prog" in our case).
+If there are anomalies in these columns, the result may be different from expected, so check the result carefully.
+
+## TASK: Pivoting irises
+
+Using the "iris" data set, create a new data set "iris_long" by selecting only petal lengths and petal widths and combining them in the same column.
+Keep the species name column in the data.
+
+```{r}
+data(iris)
+```
+
+```{r}
+# Your code here
+iris <- janitor::clean_names(iris)
+
+iris_long <- 
+  iris |> 
+  dplyr::select(
+    petal_length,
+    petal_width,
+    species
+  ) |> 
+  pivot_longer(
+    starts_with("petal"),
+    names_to = "measure_type",
+    values_to = "value"
+  )
+```
+
+Note that it is now impossible to change the new data set "iris_long" to wide format.
+(Why?) As an extra challenge, change your code by first adding an id column with `mutate(id = row_number())`, and then try to pivot wider to get to the original format.
+
+```{r}
+iris_long <- 
+  iris |> 
+  mutate(
+    id = row_number(), 
+  ) |> 
+  dplyr::select(
+    id,
+    petal_length,
+    petal_width,
+    species
+  ) |> 
+  pivot_longer(
+    starts_with("petal"),
+    names_to = "measure_type",
+    values_to = "value"
+  ) 
+
+iris_long |> 
+  pivot_wider(
+    names_from = "measure_type",
+    values_from = "value"
+  )
+```
+
+
+# Visualising data
+
+The `ggplot()` function from package `ggplot2` is a very versatile instrument for creating informative data visualisations.
+Basic functions `plot()`, `hist()`, `barplot()` etc. are good for quick "one-liner" data overviews, but here we will focus on `ggplot()`.
+
+With ggplot, you first define the *aesthetics* of the figure, that is, what `x` and `y` axes stand for, how grouping is done etc.
+Then you add *geometries* to describe what kind of a plot you want.
+You can add many geometries to the same plot using `+.` (Don't get `+` and `|>` confused. It's annoying, we know...)
+
+## Scatter plots (repeated from first worksheet)
+
+The `geom_point()` geometry generates a scatter plot.
+
+```{r}
+tobit |>
+  ggplot(aes(x = read, y = math)) +
+  geom_point()
+```
+
+Different groups can be highlighted by using colour.
+Note that this parameter goes **inside** the aesthetics definition.
+
+```{r}
+tobit |>
+  ggplot(aes(x = read, y = math, colour = prog)) +
+  geom_point()
+```
+
+Another option is to change the point shape (parameter pch comes from "point character").
+Below, we do both.
+
+```{r}
+tobit |>
+  ggplot(aes(x = read, y = math, colour = prog, pch = prog)) +
+  geom_point()
+```
+
+If the figure is too busy, yet another option is to separate the different groups in so-called "facets".
+
+```{r}
+tobit |>
+  ggplot(aes(x = read, y = math)) +
+  geom_point() +
+  facet_wrap(vars(prog))
+```
+
+Trend lines can be added using `geom_smooth()`.
+The option "lm" chooses a linear trend.
+
+```{r}
+tobit |>
+  ggplot(aes(x = read, y = math, colour = prog, pch = prog)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+## TASK: Scattered irises
+
+Using the "iris" data set, create a scatter plot showing the relationship between petal lengths and petal widths.
+Group the plot according to the iris species and add trend lines.
+
+```{r}
+iris |> 
+  ggplot(
+    aes(x = petal_length, y = petal_width)
+  ) +
+  geom_point()
+```
+
+```{r}
+# Your plotting code here
+iris |> 
+  ggplot(
+    aes(x = petal_length, y = petal_width, color = species, pch = species)
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+## Distributions
+
+Distributions can be visualised with box plots.
+The center line in a box plot denotes the median, the boxes and whiskers denote interquartile ranges, and single points denote outliers.
+(For precise definitions, see the boxplot documentation.)
+
+```{r}
+tobit |>
+  ggplot(aes(x = prog, y = apt)) +
+  geom_boxplot()
+```
+
+A fancy way to illustrate distributions is the violin plot.
+
+```{r}
+tobit |>
+  ggplot(aes(x = prog, y = apt)) +
+  geom_violin()
+```
+
+You can also add the data points in the distribution plot.
+Instead of `geom_point()`, we use `geom_jitter()` to add some artificial spread in the horizontal direction, and we use the `alpha` parameter to make the points partially transparent.
+
+```{r}
+tobit |>
+  ggplot(aes(x = prog, y = apt)) +
+  geom_violin() +
+  geom_jitter(width = 0.2, alpha = 0.3)
+```
+
+## TASK: Iris distributions
+
+Using the "iris" data set, draw a box plot or a violin plot to illustrate the distribution petal lengths of various iris species.
+
+```{r}
+data(iris)
+```
+
+```{r}
+# Your code here
+iris |> 
+  ggplot(
+    aes(
+      x = species, y = petal_length
+    )
+  )+
+  
+  geom_violin()+
+  geom_jitter(alpha = 0.3, width = 0.15)
+  #geom_point(alpha = 0.1)
+  
+```
+
+## Aggregate plots
+
+After calculating aggregates, such as means, they can also be plotted.
+
+```{r}
+tobit |>
+  group_by(prog) |>
+  summarise("mean_apt" = mean(apt)) |>
+  # we pipe the summary directly into ggplot
+  ggplot(aes(x = prog, y = mean_apt)) +
+  geom_point()
+```
+
+Plotting just three means may not seem very informative.
+Let us add error bars and a line between the points.
+We will also fix the y-axis to start from zero.
+We first need to compute standard deviations for the error bars.
+
+```{r}
+tobit |>
+  group_by(prog) |>
+  summarise("mean_apt" = mean(apt),
+            "sd_apt" = sd(apt)) |>
+  # we pipe the summary directly into ggplot
+  ggplot(aes(x = prog, y = mean_apt)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = mean_apt - sd_apt, ymax = mean_apt + sd_apt),
+                width = 0.2) +
+  geom_line(group=3) +
+  ylim(0, 800)
+```
+
+## TASK: Plotting means for reading and maths
+
+Following the above examples, create figures showing the means of reading and mathematics scores.
+You can create separate figures or try to include both in the same figure.
+
+*Hint:* If you try to combine the figures, you need to first rearrange the reading and mathematics scores in a long format.
+Then you need to group by both subject (read or math) and programme to calculate the summaries before piping to ggplot.
+
+```{r}
+#install.packages("hrbrthemes")
+# Your code here
+pd <- position_dodge(0.2)
+tobit |>
+  pivot_longer(
+    cols= c("read", "math"),
+    names_to = "subject",
+    values_to = "score"
+  ) |> 
+  group_by(prog, subject) |>
+  summarise("mean" = mean(score),
+            "sd" = sd(score)
+            ) |>
+  ggplot(aes(x = factor(prog), y = mean, color = factor(subject))) +
+  geom_point(
+    position = pd
+    ) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd),
+                width = 0.2, 
+                position = pd
+                ) +
+  geom_line(
+    aes(group = subject), 
+    position = pd
+    )+
+  #hrbrthemes::theme_ipsum()+
+  labs(
+    caption = "Points are jittered for easy reading",
+    x = "Program",
+    y = "Mean+/-SD",
+    color = "Subject"
+  )
+```
+
+```{r}
+#separate vies
+pd <- position_dodge(0.4)
+tobit |>
+  pivot_longer(
+    cols= c("read", "math"),
+    names_to = "subject",
+    values_to = "score"
+  ) |> 
+  group_by(prog, subject) |>
+  summarise("mean" = mean(score),
+            "sd" = sd(score)
+            ) |>
+  ggplot(aes(x = factor(prog), y = mean)) +
+  geom_point(position = pd) +
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd),
+                width = 0.2, position = pd) +
+  geom_line(aes(group = 2023), position = pd)+
+  #hrbrthemes::theme_ipsum()+
+  labs(
+    guide = "Points are jittered for easy reading",
+    y = "Mean +/- SD",
+    x = "Program"
+  )+
+  facet_wrap(~subject) 
+```
+
+# Saving data and results
+
+## Saving data
+
+If you need to save your data set in a file, for example to send to your colleagues, we recommend using the CSV format (the abbreviation comes from "comma-separated values").
+The CSV file is a normal text file that can be viewed with Notepad or any other text editor.
+It can also be read with any statistical software, or even MS Excel.
+If a CSV file is corrupted, it is possible to see what is wrong by opening it with a text editor, which is not true for many other data types.
+
+There are two different CSV writing functions in the "readr" package (included in the tidyverse collection):
+
+-   `write_csv` uses commas (,) to separate values, and full stops (.) for decimal separators.
+-   `write_csv2` uses semicolons (;) to separate values, and commas (,) for decimal separators. This is recommended if you need to open the file in MS Excel.
+
+These functions have reading counterparts, `read_csv()` and `read_csv2()`.
+
+For example, the following code will save our modified "tobit" data set (we added the "pass" column) into a new CSV file called "tobit_pass.csv".
+
+```{r}
+#| eval: false
+write_csv2(tobit, file = "tobit_pass.csv")
+```
+
+## Saving objects
+
+Some R objects, such as statistical models, are not necessarily in table format, so they are not suitable for CSV files.
+You can save any object from the environment in an RDS file (name comes from "R Data Serialisation") with the function `saveRDS()`.
+RDS files can only be opened by R, using the function `readRDS()`.
+
+The following example creates a linear model, prints a summary, and saves it in the file "tobit_linear_model.RDS".
+
+```{r}
+#| eval: false
+my_linear_model <- lm(read ~ math, data = tobit)
+
+summary(my_linear_model)
+
+saveRDS(my_linear_model, file = "tobit_linear_model.RDS")
+```
+
+## Saving figures
+
+Figures created by ggplot can be saved with the function `ggsave()`.
+It saves the last created plot by default.
+Possible image formats include `.png`, `.jpeg`, `.pdf`, and many others.
+
+The following example will recreate one of the previous plots and save it in a file "tobit_plot.png".
+
+```{r}
+#| eval: false
+tobit |>
+  ggplot(aes(x = read, y = math, colour = prog)) +
+  geom_point()
+
+ggsave("tobit_plot.png")
+```

@@ -1,0 +1,571 @@
+---
+title: "Week 3 worksheet"
+subtitle: "Data Analysis in R for Education Research"
+author: "Rong Guang"
+date: "2023-10-19"
+date-format: "D MMM YYYY"
+published-title: "Created"
+format: 
+  html:
+    embed-resources: true
+toc: true
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+# Setting up
+
+As before, we load the tidyverse package collection and read in the "tobit" data set.
+We also load a package called "broom" that will be used later.
+(You need to install it if you don't have it yet.)
+
+```{r setup}
+library(tidyverse)
+library(broom)
+library(here)
+tobit <- read_csv(paste0(here(), "/", "data", "/", "tobit.csv"))
+```
+
+## Topics to learn
+
+-   Joining data sets
+-   Sampling from grouped data
+-   Working with results of statistical models
+-   Repeated operations
+
+# Joining data sets
+
+If you need to combine data from another data set, you can use the `join` functions.
+
+In this example, students' GPA (grade point average) data is collected in another file, called "gpa_data.csv".
+We first read that file and assigned it to the name `gpa_data`.
+
+```{r}
+# read_csv2 reads values separated with semicolons
+gpa_data <- read_csv2(paste0(here(), "/", "data", "/", "gpa_data.csv"))
+```
+
+> Note that we need to use the `read_csv2` function here because in this file, the values are separated with semicolons, not commas.
+> This is often the case with Finnish CSV files, since the comma is used as the decimal mark.
+
+## Left join
+
+Now, we can join the data sets using `left_join()`.
+This joining function takes all the rows from the first data set and finds the corresponding row (or rows) from the second data set.
+The corresponding rows are determined with the `by` parameter.
+
+```{r}
+tobit_with_gpa <- tobit |>
+  left_join(gpa_data, by = "id")
+```
+
+Inspect the new data.
+You will see that a GPA value from the `gpa_data` table is added to each row of the `tobit` table that has the same value in the `id` column as the other table.
+If the linking columns have different names in the two tables, you can specify them as in the following example.
+
+```{r}
+gpa_with_different_id_column <- gpa_data |>
+  rename("Student ID" = id)
+
+tobit_with_gpa_2 <- tobit |>
+  left_join(gpa_with_different_id_column, by = c("id" = "Student ID"))
+```
+
+You can check that the result is the same before by using `all.equal()`.
+
+```{r}
+all.equal(tobit_with_gpa, tobit_with_gpa_2)
+```
+
+## Inner join
+
+When you inspect the `tobit_with_gpa` data, you will notice that some GPA values are missing.
+This happened because there was no data in the `gpa_data` table for these `id` values.
+The `left_join()` function still keeps these rows and adds an `NA` (missing) value if it cannot find anything to join.
+
+If you want to include only those rows that do not have missing data in either table, you can use the `inner_join()` function.
+
+```{r}
+tobit_with_no_missing_gpa <- tobit |>
+  inner_join(gpa_data, by = "id")
+```
+
+You will notice that this new table has fewer rows than the original table.
+
+There are also other `join` functions, such as `right_join()` and `full_join()`.
+You can read about them in the R documentation.
+
+## TASK: Combining pseudonymised data
+
+Your colleague has collected some exhaustion data from your students.
+For data protection reasons, your data uses fake student ID's (pseudonyms) but your colleague collected the data using actual ID's.
+
+The following block creates the ID key (pseudonym table) and the exhaustion data for you.
+Run it first.
+
+```{r}
+set.seed(171023)
+# This code creates the id key
+id_key <- data.frame(
+  "pseudonym" = tobit$id,
+  "student_id" = paste0("0", sample(1000:9999, size = length(tobit$id)))
+)
+# This code creates the exhaustion data
+exhaustion_data <- data.frame(
+  "student_id" = sample(id_key$student_id, size = 0.9 * length(tobit$id)),
+  "exhaust" = rnorm(0.9 * length(tobit$id), mean = 4.5, sd = 1.5) |>
+    floor() |> pmax(1) |> pmin(7)
+)
+```
+
+Now, use the ID key and join operations to add the exhaustion data to your `tobit` data.
+
+```{r}
+# Your code here
+tobit_exha <- 
+  exhaustion_data |> 
+  left_join(id_key, by ="student_id") |> 
+  mutate(student_id = student_id |> as.numeric()) |> 
+  left_join(tobit, by = c("pseudonym" = "id"))
+```
+
+# Sampling from grouped data
+
+Instead of summaries, you may sometimes need sample rows from the data.
+The `slice` functions will help you with this.
+If the data is grouped, you get the sample for each group.
+
+## Minimum and maximum values
+
+Functions `slice_min()` and `slice_max()` give you rows with minimum and maximum values, respectively.
+
+```{r}
+tobit |>
+  group_by(prog) |>
+  slice_min(apt)
+
+tobit |>
+  group_by(prog) |>
+  slice_max(apt)
+```
+
+Note that by default, the `slice` functions give all the rows with the maximum value.
+If you want only one row, you can specify that ties are not allowed and you only want one result.
+
+```{r}
+tobit |>
+  group_by(prog) |>
+  slice_max(apt, with_ties = FALSE, n = 1)
+```
+
+## Other slices
+
+Other `slice` functions include `slice_head()`, which returns `n` first rows of each group, and `slice_tail()`, which returns `n` last rows.
+
+```{r}
+tobit |>
+  group_by(prog) |>
+  slice_head(n = 3)
+```
+
+Finally, `slice_sample()` return a random sample.
+Use the `replace` parameter if you want to sample with replacement (i.e., the same row may appear twice in the result).
+
+```{r}
+tobit |>
+  group_by(prog) |>
+  slice_sample(n = 2, replace = TRUE)
+```
+
+## TASK: Finding minimum passed scores
+
+An aptitude score at least as large as 600 is considered a passing score for this example.
+Add a column to the `tobit` data to indicate whether the aptitude score is passing or not.
+Find the ID's for those students that have the minimum math and read scores for passing and failing aptitudes in each programme.
+
+```{r}
+# Your code here
+tobit_exha <- 
+  tobit_exha |> 
+  mutate(
+    apt_ifpass = 
+      ifelse(
+        apt >= 600, 
+        "PASS", 
+        "FAIL"
+        ) |>
+      as.factor()
+  )
+
+tobit_exha |> 
+  group_by(
+    prog, 
+    apt_ifpass
+    ) |> 
+  mutate(
+    if.min = 
+      case_when(
+        read == min(read) ~ "min.read",
+        math == min(math) ~ "min.math",
+        TRUE~ NA_character_
+      ),
+    score = case_when(
+      if.min == "min.math" ~ math,
+      if.min == "min.read" ~ read,
+      TRUE ~ NA
+    )
+  ) |> 
+  filter(
+    str_detect(if.min, "^[min]")
+  ) |> 
+  select(
+    id = pseudonym,
+    subject= if.min,
+    program = prog,
+    pass = apt_ifpass,
+    'score(minimum of the category)' = score
+  ) |> 
+  mutate(
+    subject = str_remove(subject, "min.")
+  )
+
+
+```
+
+# Working with results of statistical models
+
+The "broom" package contains helper functions for handling the results of common statistical tests.
+
+## Inspecting model results
+
+Let us focus on the *t* test, and create a data set for testing the aptitude difference between the vocational and academic groups.
+
+```{r}
+tobit_acvoc <- tobit_exha |>
+  filter(prog %in% c("academic", "vocational"))
+```
+
+We run the test and save the results in a new object called `acvoc_test_list`.
+
+```{r}
+acvoc_test_list <- t.test(apt ~ prog, data = tobit_acvoc)
+```
+
+If you inspect the object `acvoc_test_list` in the environment, you can see that it is so-called *list* containing 10 other objects.
+These objects include the *t* statistic, the *p* values and all kinds of other information.
+You can access these objects by using the `$` operator.
+
+```{r}
+acvoc_test_list$statistic
+acvoc_test_list$p.value
+```
+
+This is simple enough for quick checks, but for more serious processing, it becomes very cumbersome to find out where to find the information for the different basic tests, and to dig them up with the `$` operator.
+Also, depending on the type, the information will come out differently, as with the *t* statistic and the *p* value above.
+
+## Results in a table
+
+The `tidy()` function places the most important parts of the test result in a table.
+
+```{r}
+acvoc_test <- t.test(apt ~ prog, data = tobit_acvoc) |>
+  tidy()
+```
+
+When you inspect the `acvoc_test` object, you will notice that it is a table with easy-to-access columns that you can modify with the normal tidyverse operations.
+
+```{r}
+acvoc_test |>
+  # combine conf.low and conf.high into one expression
+  mutate("CI 95%" = paste0("[", round(conf.low, 2), ", ", 
+                           round(conf.high, 2), "]")) |>
+  # select and rename columns
+  select("Mean 1" = estimate1,
+         "Mean 2" = estimate2,
+         "t" = statistic,
+         "p" = p.value,
+         "CI 95%")
+```
+
+Similarly, you can "tidy up" the results from a linear regression.
+
+```{r}
+acvoc_linear <- lm(apt ~ math, data = tobit_acvoc) |>
+  tidy()
+```
+
+Tables created with the `tidy()` function attempt to use common column names regardless of the type of analysis.
+The following table contains some of these common names.
+
+| Column name             | Interpretation                                                                                                                  |
+|-------------------------|-----------------------------------------------|
+| `p.value`               | the *p* value (probability of an effect at least this large in the sample if the null hypothesis were true on the population)   |
+| `statistic`             | a test statistic, usually the one used to compute the *p* value, such as the Student's *t* statistic or a chi squared statistic |
+| `estimate`              | the value that was estimated with the model (a regression coefficient, a difference of means etc.)                              |
+| `conf.low`, `conf.high` | the low and high end of a confidence interval on the `estimate`                                                                 |
+| `term`                  | the term in a regression model that is being estimated                                                                          |
+| `parameter`             | the parameter for the statistic used in a hypothesis test, such as the degrees of freedom                                       |
+
+## Other broom functions
+
+The `glance()` function gives a quick one-line result for regressions and other types of model fitting.
+
+```{r}
+lm(apt ~ math, data = tobit_acvoc) |>
+  glance()
+```
+
+The `augment()` function can be used to add model-derived information to the original data set.
+
+```{r}
+tobit_acvoc_augmented <- lm(apt ~ math, data = tobit_acvoc) |>
+  augment(data = tobit_acvoc)
+```
+
+## TASK: Creating a linear model result table
+
+Study the linear dependence of the aptitude score on the reading score, the mathematics score, and the programme in the `tobit` data by fitting a linear model with the formula `apt ~ math + read + prog`.
+Create a result table containing only the estimated regression coefficients, their names, their confidence intervals, and the *p* values.
+Finally, filter the results table to include only results with *p* value less than 0.05.
+
+> Note that the confidence intervals are not given by default.
+> Search the documentation for the `tidy()` function to find a way to include the confidence intervals.
+
+```{r}
+# Your code here
+lm(apt ~ math + read + prog, data = tobit) |> 
+  tidy(conf.int = T) |> 
+  mutate(
+    "95%CI" = 
+      paste0(
+        "[",
+        round(conf.low,3), 
+        " to ", 
+        round(conf.high,3), 
+        "]"
+        ),
+    term =
+    case_when(
+      term == "proggeneral" ~ "General vs academic(ref)",
+      term == "progvocational" ~ "Vocational vs academic(ref)",
+      TRUE ~ term
+    )
+  ) |> 
+  filter(p.value < 0.05) |> 
+  select(
+    "Variable name" = term,
+    "Estimate" = estimate,
+    "95%CI",
+    "Pvalue" = "p.value"
+  ) |> 
+  mutate_if(
+    is.numeric, 
+    function(x)round(x,3)
+    ) |> 
+  mutate(
+    Pvalue = 
+      ifelse(
+        Pvalue <0.001, 
+        "<0.001", 
+        Pvalue
+        )
+  ) |> kableExtra::kable(
+    booktab = T
+    ) |> 
+  kableExtra::kable_styling(
+    latex_options="scale_down"
+    )
+```
+
+# Repeated operations
+
+Many operations and functions in R work with *vectors*, which means that the same operation is automatically performed on all values in a vector (for example, a table column).
+In these cases, there is no need to use loops or other repeating constructs that are typical in other programming languages.
+The vector operations are also programmed in such a way that they execute astonishingly quickly, even for large vectors.
+
+However, sometimes there is a need to specify manually that you want to repeat an operation.
+It is good practice to avoid copying and pasting code, as any changes would also need to be copied again.
+
+## Repeated selections
+
+When selecting rows, helper functions, such as `starts_with()`, `ends_with()` and `contains()` can be used to address many column names.
+An even more powerful helper is `matches()` which matches regular expressions.
+(We won't learn about regular expressions here.)
+
+```{r}
+tobit |> 
+  select(ends_with("d"))
+
+tobit |>
+  select(matches("^[rm][a-z]+"))
+```
+
+## Repeated filtering
+
+Filtering across many columns is done with `if_all()` and `if_any()`.
+
+```{r}
+tobit |>
+  filter(if_all(c(read, math), ~ . > 65))
+```
+
+These functions take as first argument the columns that we want to filter on, and as the second argument a *function* or a *formula*.
+A function is either a built-in R function, such as `is.na()` or new function defined by yourself (more on functions later).
+A formula is a shorthand for a functions: it begins with `~` and uses `.` is place of the function argument.
+In the previous example, the expression `filter(if_all(c(read, math), ~ . > 65))` should be read as
+
+> "Filter the rows that satisfy the following condition on both columns `read` and `math`: that the value in the columns is greater than 65."
+
+Instead of the formula, you can give the condition by creating an anonymous, "on-the-spot" function.
+
+```{r}
+tobit |>
+  filter(if_all(c(read, math), function(x) { x > 65 }))
+```
+
+A third option is to create a *named function* as an object and use that name instead.
+
+```{r}
+big_score <- function(x) { x > 65 }
+
+tobit |>
+  filter(if_all(c(read, math), big_score))
+```
+
+Note that you should now see the `big_score()` function in your Environment pane.
+You can inspect it by clicking it.
+The advantage of this approach is that you can reuse the same function in many places.
+
+You can also combine the selection helpers with the filter helpers.
+
+```{r}
+tobit |>
+  filter(if_all(contains("a") & !contains("p"),
+                ~ . > 65 ))
+```
+
+## Repeated mutations
+
+For mutating several rows, the function `across()` can be used.
+Like the filter helpers, it also takes as the first argument a list of columns and as the second argument a formula or a function.
+
+The following code standardises the read and math columns: it chooses those columns whose name contains an "a" and does not contain a "p", and divides the column values with the standard deviation of the same column.
+
+```{r}
+tobit |>
+  mutate(across(contains("a") & !contains("p"),
+                ~ . / sd(.) ))
+```
+
+## General repetitions
+
+As mentioned above, there is usually no need to specify repetition in R, but sometimes it becomes necessary.
+An easy way to perform repetition is to use functions from the "purrr" package (included in the tidyverse collection).
+The `map()` function take a vector as the first argument and a function as the second argument.
+
+```{r}
+standard_math_scores <- purrr::map(tobit$math, 
+                            function (x) { x / sd(tobit$math) })
+```
+
+When you inspect the `standard_math_scores` object, you will notice that it is a so-called "list" which contains the familiar standardised scores.
+You have already seen lists in the context of model results above.
+They are very versatile data structures but they can sometimes be frustrating to work with.
+You can change the list to a familiar vector by using `unlist()`.
+
+```{r}
+standard_math_scores |> unlist()
+```
+
+Another way is to use map variants that specify the output type.
+These will produce vectors of the indicated type.
+For example, `map_dbl()` produce a vector of decimal numbers.
+
+```{r}
+purrr::map_dbl(tobit$math, function (x) { x / sd(tobit$math) })
+```
+
+> In base R (R with no packages), repetition was done with `apply` functions.
+> The `lapply()` function is very similar to `map()`, so you can use that if the "purrr" package is not available.
+
+## TASK: Centering emotion data
+
+You received student emotion Likert data that you are keen to start analysing.
+However, for your analysis method, the data must be centred around zero, and the "Enjoyment" variables cannot contain missing data.
+
+The following block creates the emotion data for you.
+Run it first.
+
+```{r}
+set.seed(171023)
+emotions <- c("Enjoyment", "Pride", "Shame", "Boredom", "Anxiety")
+questions <- 4
+emotion_data <- 
+  list("mean" = runif(length(emotions) * questions, min = 1.5, max = 4.5),
+       "stdev" = runif(length(emotions) * questions, min = 0.7, max = 1.3)) |>
+  list_transpose() |>
+  map(function(q) { 
+    emdata = rnorm(10000, mean = q["mean"], sd = q["stdev"]) |>
+      floor() |> pmax(1) |> pmin(5)
+    emdata[sample(1:length(emdata), 
+                  size = rnorm(1, mean = 0.05, sd = 0.01) * length(emdata))
+           ] <- NA
+    return (emdata)
+  }) |>
+  data.frame() |>
+  setNames(paste0(rep(emotions, each = questions), 1:questions) |>
+             sample())
+```
+
+Now, create a new data set including all emotion variables, but where
+
+-   all variables are centred around zero by subtracting the mean of the variable from all values
+-   all rows with a missing value for an "Enjoyment" variable are filtered out.
+
+```{r}
+emotion_data_center <-
+  emotion_data |> 
+  mutate(
+    across(
+      everything(),
+      ~(.x - mean(.x, na.rm = T))
+    )
+  )
+
+emotion_data_center_nona <- 
+  emotion_data_center |> 
+  filter(if_all(matches("^[Enjoy]"), function(x)!is.na(x)))# or ~!is.na(.)
+
+emotion_data_center_nona |> 
+  map(function(x)round(x, 3)) |> 
+  as.data.frame() |> 
+  head(10) 
+
+```
+
+*Hint:* Selecting all columns can be done with the `everything()` helper function.
+
+# Bonus: Repeated analyses
+
+Combining broom and purrr functions gives a simple way of doing repeated analyses on the same data.
+In the following example, we
+
+-   "nest" the `tobit` data into a table of three sub-tables that contain the data for each programme
+-   repeat the same linear analysis for each sub-table with `map()`
+-   create result tables (as sub-tables) with `tidy()`
+-   finally, select the relevant columns and "unnest" the sub-tables into full results table.
+
+```{r}
+tobit |>
+  # create groups by programme and nest them into a column called "subtable"
+  group_by(prog) |>
+  nest(.key = "subtable") |> 
+  # repeat the same linear model for each subtable
+  mutate(model = map(subtable, function(x) { lm(apt ~ math, data = x) })) |> 
+  # create a result table for each linear model
+  mutate(result = map(model, tidy)) |>
+  # select the relevant columns and unnest the table
+  select(prog, result) |>
+  unnest(c(result))
+```

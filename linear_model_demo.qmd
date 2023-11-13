@@ -1,0 +1,264 @@
+---
+title: "Linear models"
+author: "Jokke Häsä"
+date: "2023-11-07"
+format: html
+editor: visual
+---
+
+# The data
+
+We use the tobit data that contains hypothetical student aptitude data.
+
+```{r}
+#| label: setup
+#| output: false
+
+library(tidyverse)
+library(broom)
+tobit <- read_csv("tobit.csv")
+```
+
+# Fitting the model
+
+We model the aptitude score as depending on (predicted by) the mathematics score.
+The linear model is fitted with the function `lm()`, which takes a formula of the type `outcome ~ predictor` as the main argument and the data set as a parameter.
+
+```{r}
+our_model <- lm(apt ~ math, data = tobit)
+```
+
+Inspect the resulting model in the environment.
+It is a list containing the estimated coefficients, fitted values, residuals, and many other objects.
+The list elements can be accessed with the `$` operator.
+
+```{r}
+bind_cols(
+  "observed_y" = our_model$model$apt,
+  "fitted_y" = our_model$fitted.values,
+  "residuals" = our_model$residuals
+) |>
+  mutate("fit_plus_res" = fitted_y + residuals)
+```
+
+## Checking assumptions
+
+It is useful to inspect the normality and homoscedasticity of the residuals.
+
+```{r}
+# quantity-quantity plot
+qqnorm(our_model$residuals)
+qqline(our_model$residuals)
+
+# residuals vs. fitted
+plot(our_model$residuals ~ our_model$fitted)
+abline(0, 0)
+
+# distribution of residuals
+plot(density(our_model$residuals))
+```
+
+It seems that the residuals are almost normally distributed, but their variance decreases in the higher end, probably due to a ceiling effect (when fitted values approach the maximum aptitude 800, the observed values cannot be higher).
+
+# Viewing the results
+
+The `print()` function gives the coefficients of the model.
+
+```{r}
+print(our_model)
+```
+
+The `summary()` function gives also the standard errors and *t* and *p* values for the coefficients (assuming normal and homoscedastic distribution of residuals).
+In addition, it prints out the *R*^2^ value and other information about the model fit.
+
+```{r}
+summary(our_model)
+```
+
+Using the `tidy()` and `glance()` functions from the "broom" package, we can get the same information in a tidy table format.
+
+```{r}
+tidy(our_model)
+glance(our_model)
+```
+
+# Plotting the model
+
+The linear regression model can be plotted in `ggplot` using the `geom_point()` and `geom_smooth()` geometries.
+
+```{r}
+tobit |>
+  ggplot(aes(x = math, y = apt)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+# The *t*-test as a linear model
+
+The *t*-test of difference of means between two groups is also a linear model.
+In this case, the predictor variable has only two values, 0 and 1, indicating the two groups.
+
+Let us create an indicator variable separating the "vocational" programme from the rest of the data.
+
+```{r}
+tobit_dichotomic <- tobit |>
+  mutate(voc_indicator = ifelse(prog == "vocational", 1, 0))
+```
+
+Then we compare the means of the aptitude scores between the vocational programme and the others.
+We do this by the *t-*test as well as fitting a linear model.
+We combine the results of both in the same tidy table for easier comparison.
+
+```{r}
+bind_rows(
+  tidy(lm(apt ~ voc_indicator, data = tobit_dichotomic)),
+  tidy(t.test(apt ~ voc_indicator, data = tobit_dichotomic, var.equal = TRUE))
+)
+```
+
+Note the similarity of the results.
+We can also plot this model.
+We use the `geom_jitter()` geometry to spread out the points in the two groups a little.
+
+```{r}
+tobit_dichotomic |>
+  ggplot(aes(x = voc_indicator, y = apt)) +
+  geom_jitter(width = 0.1, height = 0) +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+Note how the linear slope demonstrates the difference between the means of the two groups.
+
+# More predictors
+
+Let us predict aptitude based on both mathematics and reading scores.
+
+```{r}
+multivariate_model <- lm(apt ~ math + read, data = tobit)
+
+summary(multivariate_model)
+```
+
+We can also add an interaction term using multiplicative (`*`) syntax.
+
+```{r}
+interaction_model <- lm(apt ~ math * read, data = tobit)
+
+summary(interaction_model)
+```
+
+Or we can build the same formula manually using the interaction symbol (`:`).
+
+```{r}
+interaction_model_2 <- lm(apt ~ math + read + math:read, data = tobit)
+
+summary(interaction_model_2)
+```
+
+Using the interaction symbol enables leaving out the main predictors, if we are only interested in seeing if there is a significant interaction.
+
+```{r}
+interaction_model_3 <- lm(apt ~ math:read, data = tobit)
+
+summary(interaction_model_3)
+```
+
+As the interaction is significant, we should probably not use both maths and reading scores as separate linear predictors in the same model.
+
+# Categorical predictors
+
+Let us try predicting aptitude scores based on the programme.
+R understands that the programme is a categorical variable, so we can provide it directly as a predictor and R will form the indicator variables automatically.
+
+```{r}
+categorical_model <- lm(apt ~ prog, data = tobit)
+
+summary(categorical_model)
+```
+
+The slopes of the indicators must be understood in relation to the 0 level, which in this case is the "academic" programme (based on alphabetical ordering).
+
+If we want to force particular levels, we must do it by changing the variable into a factor and defining its levels manually.
+
+```{r}
+tobit_factorised <- tobit |>
+  mutate(prog = factor(prog, levels = c("general", "vocational", "academic")))
+
+categorical_model_2 <- lm(apt ~ prog, data = tobit_factorised)
+
+summary(categorical_model_2)
+```
+
+## ANOVA
+
+With categorical predictors, we are usually interested in how the variance is partitioned between the groups.
+We can produce an analysis of variance table with the function `anova().`
+
+```{r}
+anova(categorical_model)
+```
+
+The ANOVA table shows
+
+1.  the degrees of freedom (no of groups minus one for the predictor, sample size minus no of groups for the residuals)
+2.  explained and residual sums of squares
+3.  explained and residual variances (i.e., mean squares = sums of squares divided by degrees of freedom)
+4.  the *F* value and the corresponding *p* value (*F* = explained variance / residual variance).
+
+The ANOVA table can also be tidied.
+
+```{r}
+tidy(anova(categorical_model))
+```
+
+## Checking assumptions
+
+The *F* test for ANOVA is quite robust against violations of the assumptions of normality and homoscedasticity, but they should be checked.
+This time, we use ggplot.
+
+```{r}
+data.frame(res = categorical_model$residuals) |>
+  ggplot(aes(sample = res)) +
+  geom_qq() +
+  geom_qq_line()
+
+data.frame(fit = categorical_model$fitted.values,
+           res = categorical_model$residuals) |>
+  ggplot(aes(x = fit, y = res)) +
+  geom_jitter(width = 5, height = 0) +
+  geom_hline(yintercept = 0)
+
+data.frame(fit = as.factor(round(categorical_model$fitted.values)),
+           res = categorical_model$residuals) |>
+  ggplot(aes(x = res, colour = fit)) +
+  geom_density()
+```
+
+Again, we can see the ceiling effect with high values: there is no room for positive residuals when the fitted value approaches the maximal aptitude score.
+
+# Mixed predictors
+
+Since we know that mathematics score predicts the aptitude score, we may be interested if the programme has any additional effect, after the mathematics score is controlled for.
+This is called an ANCOVA (analysis of covariance) model.
+
+```{r}
+ancova_model <- lm(apt ~ math + prog, data = tobit)
+
+anova(ancova_model)
+```
+
+From the ANOVA table, we see that even after we have taken into account the mathematics score, the programme remains a significant predictor.
+
+# Multiple outcomes
+
+The `lm()` function does not allow for multiple outcome variables, so we need to use other functions.
+Let us predict the combination of mathematics and reading scores based on the programme.
+This is an example of a "multivariate analysis of variance", or MANOVA, model.
+
+```{r}
+manova_model <- manova(cbind(math, read) ~ prog, data = tobit)
+
+summary(manova_model)
+```
+
+We will not learn to interpret these models in this course.

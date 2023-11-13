@@ -1,0 +1,2034 @@
+---
+title: "Modelling Fin's Happiness"
+subtitle: "dataset (FSD3494)"
+
+author: "Rong Guang"
+date: "11/2022"
+
+output: 
+  html_document:
+    fig_caption: yes
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_section: false
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Assignment 5: Final Assignment
+
+&emsp;&emsp;This analysis will be based on a secondary data set (FSD3494) collected for exploring Finnish Values and Attitudes Autumn 2020. In the current study, it will be used for analyzing the correlation between Fin's attitude towards happiness and their self-perceived state of happiness, controlling for a number of other factors. 
+
+# 1. Preparation
+
+## 1.1 prepare the dataset
+
+```{r}
+library(tidyverse)# for wrangling data
+library(tidyr)# for wrangling data
+library(haven)#to use the function "read_por"
+#load the data set  "FSD3494 EVA Survey on Finnish Values and Attitudes Autumn 2020"
+fin1 <- read_por("daF3494e.por")
+#prepare a factor version of fin1
+finF <- as_factor(fin1)# "F" is for "factor".
+```
+
+## 1.2 prepare a codebook
+
+&emsp;&emsp;Although the variable and level labels are already clear by referring to two versions of data sets, the analysis would be even more efficient with a easy-to-read code book, which will be generated herein. 
+
+```{r}
+library(DT)#data table
+library(sjlabelled)#to use function get_labels
+library(expss)#to use the function var_lab
+var_book <- lapply(finF, function(x)var_lab(x)) #pass variable labels into an object
+val_book <- lapply(finF, function(x)get_labels(x)) #pass level labels into an object
+val_book <- lapply(val_book, function(x)paste(x, collapse="\n***")) # collapse level labels so that each variable
+#has all value labels in one grid. Add a new line between level labels so they have better readability.
+
+###discard: codebook <- append(var_book, val_book)
+all_levels <- unlist(val_book) #convert list into vector
+all_items <- unlist(var_book) #convert list into vector
+
+codebook <- data.frame(all_items, all_levels) # generate a codebook which has variable label as a column and 
+#level labels as another. Easy for reading.
+datatable(codebook, caption = "Table: Code book") #inspect the 
+# codebook It's good, searchable by the aide of "database()". 
+```
+
+&emsp;&emsp;If the code book is searchable via code, it would be nicer. 
+
+```{r}
+#Try to made the code book "searchable" with code.
+search <- t(codebook) #transpose it
+search <- as.data.frame(search) # convert to data frame, pass it to "search".
+search %>% 
+  select(Q5) %>% 
+  datatable(caption = "Table: Item and level lables
+            for Q5") #try "search". Search items starting with Q5
+```
+
+&emsp;&emsp;Code books are ready now. 
+
+## 1.3 generate variable for analysis
+
+&emsp;&emsp;Each year the UN releases a World Happiness Report showing which are the best countries to live in the world. 2022's version has seen Finland come out in the top spot again. That is for the sixth year running. Meanwhile, it is interesting that Finland also has an alcohol problem. A 2020 study reported that, in the population of 5.5 million people in Finland, at least 270,000 Finns had experienced problems resulting from their own alcohol use in at least one area of life during the previous year. As such, I am very interested in digging into fin's attitude towards happiness, self-perceived happiness, self-perceived alcohol consumption change during Pandemic and their correlations. **The flowchart below shows the variables that were selected from meta data set for the present analysis (red box above), and also shows how the missing values were treated (red box below)**.
+
+### 1.3.1 generate variables about happiness attitude
+
+&emsp;&emsp;Items Q7_1 to Q7_14 asked about participant's perceived importance of 14 happiness sources. These items reflect their attitude towards happiness. Perhaps there are latent constructs underlying them.
+
+```{r}
+#inspect variable and level labels of items Q7s
+search %>% select(starts_with("Q7")) %>% 
+  datatable(caption = "Table: Code book for items about happiness attitude",
+            class = 'cell-border stripe') 
+```
+
+```{r}
+#inspect value counts of Q7s
+fin1 %>% select (starts_with("Q7")) %>% sapply(.,function(x)table(x)) 
+```
+
+&emsp;Items Inspecting the code-book and value counts, it is found that "6" denotes "Can't say", which should be converted to NA. It is also notable that some items, such as Q7_13, are plagued by missing values. I will treat this issue after variable generation. Besides, the levels starts from "very important" towards "not at all", which would be more plausible if reversed (from least importance to biggest importance). 
+
+```{r}
+library(finalfit)#for missing_glimpse
+#convert value 5 in items Q7s into NA
+fin1 <- fin1 %>% 
+  mutate(across(starts_with("Q7"), ~replace(., . == 6, NA)))
+#inspect value counts after conversion
+fin1 %>% select (starts_with("Q7")) %>% 
+  sapply(.,function(x)table(x))
+#inspect NAs after conversion
+fin1 %>% select(starts_with("Q7")) %>% 
+  missing_glimpse() %>% 
+  datatable(caption = "Table: Number of NAs after conversion",
+            class = 'cell-border stripe')
+```
+
+&emsp;&emsp;Level "6" has been replaced. The number of NAs was checked and found to be consistent with previous "6"s for each Q7 item. Done!
+
+```{r}
+library(broom)#to diplay tidy table
+#pass the values into new columns with new names for better understandability
+fin1 <- fin1 %>% mutate(happy_family = 6-Q7_1,   #have 6 minus each value so that 
+                       happy_social = 6-Q7_2,    #the value orders are reversed 
+                       happy_love = 6-Q7_3,      #(e.g. 5->1, 1->5).
+                       happy_income = 6-Q7_4,
+                       happy_wealth = 6-Q7_5,
+                       happy_health = 6-Q7_6,
+                       happy_likejob = 6-Q7_7,
+                       happy_employed = 6-Q7_8,
+                       happy_learn.expc = 6-Q7_9,
+                       happy_time.hobby = 6-Q7_10,
+                       happy_status = 6-Q7_11,
+                       happy_influence = 6-Q7_12,
+                       happy_religion = 6-Q7_13,
+                       happy_nature = 6-Q7_14)
+#inspect new columns
+fin1 %>% 
+  select(which(colnames(fin1) == "happy_family") : ncol(fin1)) %>% 
+  datatable(caption = "Table: The data set for analysis", 
+            class = 'cell-border stripe')
+#I will not further label them since I am going to do factor analysis on them.
+```
+
+### 1.3.2 generate variables about perceived happiness 
+
+    Item Q4 asked the respondent's self-perceived happiness. It is a one-item question.
+
+```{r}
+#inspect variable and level labels of items Q4
+search %>% 
+  select(Q4) %>% 
+  datatable(caption = "Table: Code book about self-perceived happiness")
+```
+
+```{r}
+#inspect value counts of Q4
+fin1 %>% count(Q4)
+```
+&emsp;&emsp;Items Inspecting the code-book and value counts, it is found that "5" and "6" denotes "Can't say" and "Don't want to say/assess", respectively, which should be converted to NA.
+
+```{r}
+#convert value 5 in items Q7s into NA
+fin1$Q4 <- replace(fin1$Q4, fin1$Q4 >=5, NA)
+#inspect value counts after conversion
+fin1 %>% count(Q4)
+```
+
+&emsp;&emsp; Now the number of NAs equals to 36+35=71. Done!
+
+```{r}
+library(finalfit)# to use function ff_label
+#pass the values into new columns with new names for better understandability
+fin1 <- fin1 %>% 
+  mutate(feel_happy = Q4 %>% factor() %>% 
+           fct_recode("very happy" = "1",
+                      "Fairly happy" = "2",
+                      "Not very happy" = "3",
+                      "Not at all happy" = "4") %>% 
+           fct_rev() %>% #reverse the level to get better 
+                                        # interpretability in modeling
+           ff_label("self-perceived happiness"))
+#create a new binary variable about self-perceieved happiness
+fin1 <- fin1 %>% 
+  mutate(if_feel_happy = 
+           case_when(feel_happy == "very happy" ~ "happy",
+                     feel_happy == "Fairly happy" ~ "happy",
+                     feel_happy == "Not very happy" ~ "unhappy",
+                     feel_happy == "Not at all happy" ~ "unhappy") %>% 
+           ff_label("feel happy or unhappy") %>% factor %>% 
+           fct_rev()
+         )
+
+#inspect new columns
+fin1 %>% select(which(colnames(fin1) == "happy_family") : ncol(fin1))
+count(fin1, feel_happy)
+count(fin1, if_feel_happy)
+```
+
+### 1.3.3 generate variables about alcohol abuse 
+
+&emsp;&emsp;Items Q11_4_1 to Q11_4_6 (note that Q11_4_3 does not exist) asked about participant's experienced or witnessed alcohol abuse from different parties, including themselves, their family, friends and work community.
+
+```{r}
+#inspect variable and level labels of items Q11s
+search %>% 
+  select(starts_with("Q11_4")) %>% 
+  datatable(caption = "Table: Code book about alcohol-related questions",
+            class = 'cell-border stripe')
+```
+
+```{r}
+#inspect the levels of alcohol-related items.
+fin1 %>% select (starts_with("Q11_4")) %>% sapply(.,function(x)table(x))
+```
+
+```{r}
+#inspect cases who have alcohol abuse
+fin1 %>% 
+  filter(Q11_4_1 == 1) %>% select(starts_with("Q11_4"))
+
+#inspect the contingency of alcohol related items 
+
+fin1 %>%  
+  count(Q11_4_1, Q11_4_2, Q11_4_4, Q11_4_5, Q11_4_6) 
+
+#inspect respondents who have alcohol abuse while none of those who are 
+#close to them have.
+fin1 %>% 
+  select(starts_with("Q11_4")) %>% 
+  filter(if_all(Q11_4_2:Q11_4_5, ~.x == 0) & Q11_4_1 == 1) %>% 
+  datatable(caption = "Table: Respondents who have alcohol abuse 
+            while none of those who are close to them have", 
+            class = 'cell-border stripe')
+```
+
+&emsp;&emsp;Base on the inspection above, I decide to generate two new variables depicting if a respondent is an alcoholic (generally), and a variable with four levels depicting if a respondent and his/her family is alcoholic(the four levels are : _a._ an alcoholic from an alcoholic family, _b._ an alcoholic from a non-alcoholic family, _c._ non-alcoholic from an alcoholic family, and _d._ non-alcoholic from a non-alcoholic family). 
+
+```{r}
+fin1 <- fin1 %>% 
+  mutate(alco = Q11_4_1 %>%
+           factor() %>% 
+           fct_recode("No" = "0",
+                      "Yes" = "1") %>% 
+           ff_label("alcoholic"),
+         x_alco_alcofamily =   #variables starting with "x" will not enter data 
+                               #set for analysis. 
+           case_when(if_all(Q11_4_1:Q11_4_2, ~.x == 1) ~ "Yes",   
+                     if_any(Q11_4_1:Q11_4_2, ~is.na(.x)) ~ NA_character_,
+                     TRUE ~ "No") %>%
+           factor() %>% 
+           ff_label("an alcoholic with alcoholic family"),
+         x_alco_nonalcofamily = 
+           case_when((Q11_4_1 == 1 & Q11_4_2 == 0) ~ "Yes",
+                     if_any(Q11_4_1:Q11_4_2, ~is.na(.x)) ~ NA_character_,
+                     TRUE ~ "No") %>% 
+           factor() %>% 
+           ff_label("an alcoholic without alcoholic family"),
+         x_nonalco_alcofamily = 
+           case_when((Q11_4_1 == 0 & Q11_4_2 == 1) ~ "Yes",
+                     if_any(Q11_4_1:Q11_4_2, ~is.na(.x)) ~ NA_character_,
+                     TRUE ~ "No") %>% 
+           factor() %>% 
+           ff_label("a non-alcoholic with alcoholic family"),
+         x_non_alco_nonalcofamily = 
+           case_when((Q11_4_1 == 0 & Q11_4_2 == 0) ~ "Yes",
+                     if_any(Q11_4_1:Q11_4_2, ~is.na(.x)) ~ NA_character_,
+                     TRUE ~ "No") %>% 
+           factor() %>% 
+           ff_label("a non-alcoholic with a non-alcoholic family")
+         )
+fin1 <- fin1 %>% 
+  mutate(alco_family_state = 
+           case_when((x_non_alco_nonalcofamily == "Yes") ~ "non_alco_nonalcofamily",
+                     (x_nonalco_alcofamily == "Yes") ~ "nonalco_alcofamily",
+                     (x_alco_nonalcofamily == "Yes") ~ "alco_nonalcofamily",
+                     (x_alco_alcofamily == "Yes") ~ "alco_alcofamily",
+                     TRUE ~ NA_character_)
+         )
+
+
+fin1 %>% 
+  select(which(colnames(fin1) == "alco"): ncol(.)) %>% 
+  head() %>% 
+  datatable(caption = "Table: head of alcohol-related variables", 
+            class = 'cell-border stripe')
+```
+
+### 1.3.4 generate demographic variables
+
+&emsp;&emsp;Items T1 to T13 as well as BV1 and BV2 are demographic variables. They are selected into the new data set here.
+
+```{r}
+#inspect demographic variables in code book.
+search %>% 
+  select(starts_with("T")|starts_with("BV")) %>% 
+  datatable(class = 'cell-border stripe')
+#rename and relabel these variables.
+finF <- finF %>% mutate(gender = T1 %>% 
+                          ff_label("gender"),
+                        age = T2 %>% 
+                          ff_label("age"),
+                        resi_population = T3 %>% 
+                          ff_label("residence population"), 
+                        resi_region = T4 %>% 
+                          ff_label("residence region"),
+                        employer = T5 %>% 
+                          ff_label("type of employer"),
+                        work_hour = T6 %>% 
+                          ff_label("working hours"),
+                        work_contract = T7 %>% 
+                          ff_label("work contract"),
+                        education_basic = T8 %>% 
+                          ff_label("basic education"),
+                        education_prof = T9 %>% 
+                          ff_label("professional education"),
+                        occupation = T10 %>% 
+                          ff_label("occupational group"),
+                        industry = T11 %>% 
+                          ff_label("current or latest industry of employment"),
+                        union_if = T12  %>% 
+                          ff_label("if he/she is a member of a federation of 
+                                   trade unions/professional organisations"),
+                        party_vote = T13 %>% 
+                          ff_label("the party he/she is going to vote fore"),
+                        social_class = T14 %>% 
+                          ff_label("social calss"),
+                        househould_income = BV1 %>% 
+                          ff_label("househould gross annual income"),
+                        YOB = BV2 %>% 
+                          ff_label("year of birth"))
+```
+
+### 1.3.5 subset newly-generated variables into new dataset for analysis
+
+```{r}
+part1 <- fin1 %>% 
+  select(FSD_ID, 
+         which(colnames(fin1) == "happy_family"):ncol(.), 
+         -starts_with("x")  
+         )
+
+part2 <- finF %>%  select(FSD_ID, gender:YOB)
+
+happyfin <- left_join(part1, part2)
+
+happyfin %>% head
+```
+
+## 1.4 handle missing data
+
+&emsp;&emsp;Missing values are present across the included variables. They will be treated to enhance the validity of study by the following rules: For the dependent variable in modelling (respondent's self-perceived happiness), cases with NA will be removed from analysis; For the most interested independent variables (variables about happiness, n = 14) that are plausibly correlated with demographic variables, any cases with more than half missing values (n of NAs ≥ 7) will be removed from analysis; any missing values for the cases kept will be imputed using Multiple Imputation Chain Equation (MICE) with all the other variables in the whole new data set being the predictors (except for indexing number); For alcohol-related variables and demographic variables, missing values will be kept as it is. 
+
+```{r}
+library(naniar)
+# Get number of missing values per variable (n and %)
+miss_var_summary(happyfin)
+# Get number of missing values per participant (n and %)
+miss_case_summary(happyfin)
+#happyfin <- happyfin[rowSums(is.na(happyfin[,col_happy]))/14 < 0.5 | rowSums(is.na(fin1joy))/14 == 0,] 
+
+#aaa <- fin1joy %>% 
+#  mutate(across(everything(), ~replace(.,rowSums(is.na(.))/14 >= 0.5, NULL))) 
+#miss_case_summary(fin1joy_nohalfmiss)
+
+#remove cases whose feel_happy is NA
+happyfin <- happyfin[!is.na(happyfin$feel_happy),]
+
+summary(happyfin$feel_happy)
+```
+
+```{r}
+#remove cases whose items about happiness attitude has half or more missing values.
+fin1 %>% select (starts_with("happy")) %>% summary
+col_happy <- fin1 %>% select (starts_with("happy")) %>% colnames()
+happyfin <- happyfin[rowSums(is.na(happyfin[,col_happy]))/14 < 0.5 | rowSums(is.na(happyfin[,col_happy]))/14 == 0,] 
+```
+
+```{r, fig.cap="**Number of missing values per variable**"}
+#inspect number of missing values per variable
+gg_miss_var(happyfin)
+#inspect if the presence of missing values for work-related variables correlates 
+#with age group, using work_hour as example
+work_hour_by_age <- happyfin %>%  group_by(age) %>% 
+  summarise(number = n())
+work_hour_by_age_missing <- happyfin %>% 
+  filter(is.na(work_hour)) %>% 
+  group_by(age) %>% 
+  summarise(number.missing = n())
+left_join(work_hour_by_age_missing, work_hour_by_age, by ="age") %>% 
+  mutate(missing.prop_percent = number.missing/number*100) %>% 
+  datatable(colnames = c("proportion of missing(%)" = "missing.prop_percent", 
+                         "number of missing values in the age group" = "number.missing",
+                         "age group" = "age",
+                         "number of participants in the age group" = "number"),
+             caption = "Table: proportion of missing values
+              of working hours by age group",
+            class = 'cell-border stripe') %>% 
+  formatRound(columns = 4, digits = 2)
+```
+
+&emsp;&emsp;It is interesting to find that almost all variables relevant to work, social status and religion suffers from considerable proportion of NAs. This might be the result of a. privacy-related nature of these questions; b. wording of the question being not compatible with some age groups. For example, for the variable about working hours (with biggest number of NAs), respondent under 25 and over 65 years old gave most NAs (24.2% and 12.8%, respectively), indicating young adults might not be able to answer these work-related questions since they are still in college and have not entered industry, and that aged respondents might have already retired and felt confused if they should answer base on their current life stages. These findings suggest rewording of these questions or designing age-specific questions if this survey would be carried out longitudinally. 
+
+```{r, fig.cap="**Upset graph for missing values of five varialbes with most NAs**"}
+gg_miss_upset(happyfin)
+```
+
+```{r, fig.cap="**Heatmap for missing values of fifteen varialbes with most NAs**"}
+gg_miss_fct(happyfin[,c(col_happy, "work_contract", "work_hour")], fct = happy_employed)
+```
+&emsp;&emsp;The results are compatible with the assumption that there is a substantial number of cases in which some NAs happen to occur across certain variables or certain levels of variables (e.g. the happiness attitude towards being employed was more frequently rated low by those who gave NAs in working hour and/or working contract). Thus, it seems that the data are not missing completely at random. MICE can be a plausible method to impute them. 
+
+```{r, results='hide'}
+library(mice)#multiple imputation chain equation
+#MICE package requires a logical matrix that defines which data points need 
+#to be imputed and which not. Firstly, the variables that will be imputed are
+#defined. Note that the first column which is indexing number is also included,
+#and this is not a problem since there is no missing values in indexing.
+where_matrix_imputed <- make.where(happyfin[,1:15])
+#Next, the variables that will not be imputed but will be used as predictor for
+#imputation are defined here.
+where_matrix_nonimputed  <- make.where(happyfin[,c(16:ncol(happyfin))], 
+                                       keyword = "none")
+#Combine them to get the final logical matrix
+where_matirx <- data.frame(where_matrix_imputed,where_matrix_nonimputed)
+#select predictors according to the minimum threshold (0.3) against which the 
+#absolute correlation in the data is compared.
+pred_mat <- quickpred(happyfin, mincor = 0.3)
+#execute MICE, with 10 times of imputations, 50 times of iterations, "sample"
+#as the imputation method.
+happyfin_mice <- mice(happyfin, 
+                      m = 10, 
+                      maxit = 50, 
+                      where = where_matirx, 
+                      method="sample", 
+                      seed = 6, 
+                      predictorMatrix = pred_mat)
+```
+
+```{r}
+#check the imputation method used per variable
+happyfin_mice$meth
+#pass data set happyfin into another object happyfin_raw in case otherwise usage
+happyfin_raw <- happyfin
+#replace data set happyfin with the last imputed data set in MICE.
+happyfin <- mice::complete(happyfin_mice, 10)
+#inspect the state of missing values (variables about happiness attitude should
+#have none NA)
+missing_glimpse(happyfin) %>% 
+  datatable(class = 'cell-border stripe')
+```
+
+&emsp;&emsp;Variables about happiness attitude now have none NAs. Imputation is done.
+
+### 1.5 Summarising section one (variable selection and missing value treatment)
+
+Here the variable selection and missing value treatment conducted above are summarized visually for better recording.**The flowchart below shows the variables that were selected from meta data set for the present analysis (red box above), and also shows how the missing values were treated (red box below)**.
+
+```{r, fig.cap="**Flowchart about variables used (red box above) and missing value treatment (red box below)**"}
+library(DiagrammeR)#install.packages("DiagrammeR"), a package for making flowchart 
+DiagrammeR::grViz("digraph {
+    graph [layout = dot, 
+    rankdir = RR, 
+    nodesep = 0.5, 
+    ranksep = 0.8, 
+    color = crimson, 
+    penwidth =5]
+     node [shape = 
+     box, fontcolor = white, 
+     fontsize=50, width = 3, 
+     height = 1.5, 
+     fillcolor = DimGrey, 
+     style = filled]
+    
+  
+    0 [label = 'Metadata', width = 14]
+  
+    1 [label = 'Q4', width =7]
+    2 [label = 'Q7_1 to Q7_14', 
+    width = 7]
+    3 [label = 'Q11_4_1 to Q11_4_6', 
+    width = 7]
+    4 [label = 'T1 to T14, BV1, BV2', 
+    width = 7]
+    5 [label = 'Other Variables \n held out', 
+    width = 7]
+    1.5 [label = 'Self-perceived \n happiness (n=2)', 
+    width = 7]
+    2.5 [label = 'Hhappiness \n attitude (n=14)', 
+    width = 7]
+    3.5[label = 'Alcohol abuse \n (n =2)', 
+    width = 7]
+    4.5[label = 'Demographics \n (n = 16)', 
+    width = 7]
+    6[label = 'New raw data set for analysis \n (variables n = 34, 
+    cases n = 2019)', 
+    width = 15]
+    s1[label = 'Gernal Case Screening \n (n = 2019)', 
+    width = 15]
+    s2[label = 
+    'Case Screening base on \n variables of major interest \n (n = 2019)', 
+    width = 15]
+    s3[label = 
+    'Final data set for analysis \n (variables n = 34, cases n = 1938)', 
+    width = 22.1]
+    blanka[label = '', width = 0.01, height = 0.01]
+    blankb[label = '', width = 0.01, height = 0.01]
+    ss1[label = 
+    'Remove cases \n with ≥ half (34/2 = 17) of \n the reponses being NA (n = 0)', 
+    width = 10]
+    ss2[label = 
+    'Remove cases \n a. with any NA in self- perceived \n happiness  (dependent variable in \n modelling) (n = 71) \n b. with half (14/2= 7) of the \nresponses  being NA in happiness \n attitude variables  (most-interested \n predictors in modelling) (n = 10)', 
+    width = 8]
+    0 -> {1 2 3 4};
+    { rank = same;0 -> 5}
+     subgraph cluster1 {
+    1 -> 1.5;
+    2 -> 2.5;
+    3 -> 3.5;
+    4 -> 4.5;
+    {1.5 2.5 3.5 4.5} -> 6;}
+   subgraph cluster2 {
+    6 -> s1;
+    s1 -> blanka[ dir = none, ranksep = 0.05 ];
+    { rank = same; blanka -> ss1  [minlen = 2]};
+    blanka -> s2 [ranksep = 0.05 ]; 
+    s2 -> blankb[ dir = none ];
+    { rank = same; blankb -> ss2 [minlen = 2]};
+     blankb -> s3;}
+}")
+```
+
+# 2. factor analysis
+
+&emsp;&emsp;There are 14 items about Fin's attitude of happiness that each captures one aspect (e.g. about family, love, wealth, health). There might be latent constructs underlying them that minimize the shared variances among them. A factor analysis will be carried out to explore these latent constructs. If there is any, factor scores will be generated for each construct, facilitating the subsequent modeling about perceived happiness. 
+
+## 2.1 Select variables for factor analsyis and descriptive statistics
+
+### 2.2.1 select variables 
+
+```{r}
+library(psych)
+happyscale <- happyfin[,1:15] 
+```
+
+### 2.2.2 examine the normality
+
+```{r, fig.cap="**Examine the normality of each happiness attitude variable**"}
+happyscale %>% 
+  pivot_longer(2:15, names_to = "attitudes", values_to = "scores" ) %>% 
+  ggplot(aes(x = scores)) +
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~attitudes)
+```
+
+&emsp;&emsp;Base on the histogram, it is concluded that most of the variable about happiness attitude are not normally distributed. Hence, the presumption of multi-variate normality is severely violated.
+
+### 2.2.3 examine potential hierarchy in the data set
+
+```{r, fig.width= 12, fig.height= 16}
+library(patchwork)# arrange graphs
+
+#Select potential moderators for happy attitude. 
+#a. Age group might be the most plausible one, since people's attitude towards 
+#Happiness might change with the age. Things important for the students might
+#become less important for the retired.
+#b. Gender might be another moderator.
+happyByModerator <- happyfin %>% 
+  select(1:15, gender, age) %>% 
+  pivot_longer(2:15, 
+               names_to = "items", 
+               values_to = "scores") #for easy plotting, convert to long format
+
+#calculate mean and sd per age group & per item
+happyByModerator1 <- happyByModerator %>% 
+  group_by(age, items, gender) %>% 
+  summarise(mean = mean(scores), SD = SD(scores))
+
+#save jitter position to make points and lines jitter simultaneously
+jitterposition <- position_jitter(width = 0.1, height = 0.1)
+
+#plot the correlation of age group with happiness attitude scores by gender (mean±sd)
+p_mean <- happyByModerator1 %>% 
+  filter(!gender == "Other") %>%  #Gender "other" has too small a sample size,
+                                  #the sample might not be representative
+  ggplot(aes(x = age, y = mean, group = gender, color = gender)) +
+  theme_bw()+
+  geom_line(alpha = 0.5, 
+            position = jitterposition, 
+            size = 1) +
+  geom_point(position = jitterposition) +
+  facet_wrap (~items, 
+              ncol = 5) +
+  geom_errorbar(aes(ymin = mean-SD, ymax = mean+SD), 
+                alpha = 0.8,
+                size = 0.5,
+                width = 0.3,
+                position = jitterposition) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, 
+                                   size = 10, 
+                                   face = "bold"), 
+        legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        plot.title = element_text(size = 18),
+        axis.title.y = element_text(size = 12))+
+  labs(title = 
+         "Picture A:Correlation of age group with happiness attitude scores by gender (mean±sd)",
+       y = "Mean and standard deviation of happiness attitude scores")
+
+
+
+happyByModerator2 <- happyByModerator %>% 
+  group_by(age, items, gender) %>% 
+  summarise(median = median(scores), 
+            low = quantile(scores, 0.25), 
+            high = quantile(scores, 0.75))
+
+#plot correlation of age group with happiness attitude scores 
+#by gender (median, Q1,Q3) 
+p_median <- happyByModerator2 %>% 
+  filter(!gender == "Other") %>% 
+  ggplot(aes(x = age, y = median, group = gender, color = gender)) +
+  theme_bw()+
+  geom_line(alpha = 0.5, 
+            position = jitterposition, 
+            size = 1) +
+  geom_point(position = jitterposition) +
+  facet_wrap (~items, 
+              ncol = 5) +
+  geom_errorbar(aes(ymin = low, ymax = high), 
+                alpha = 0.8,
+                size = 0.5,
+                width = 0.3,
+                position = jitterposition) +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, 
+                                   size = 10, 
+                                   face = "bold"), 
+        legend.position = "bottom",
+        axis.title.x = element_blank(), 
+        plot.title = element_text(size = 18),
+        axis.title.y = element_text(size = 12))+
+  labs(title = 
+         "Picture B:Correlation of age group with happiness attitude scores by gender (median, Q1,Q3) ",
+       y = "Median and 1st/3rd quantile of happiness attitude scores")
+
+p_mean/p_median
+```
+
+&emsp;&emsp;It is observed in pic A that male and female do not differ in most happiness attitude items. This is also true if observing by different age group. However, when plotting with median and quantile as picture B, some difference can be seen in love and income items. Here picture B should be more reliable since the non-normally distributed nature of most items. Picture B shows middle-aged females would assign love with higher importance to happiness than their male counterparts (row 2, column 3), and middle and high aged females would have their happiness be less dependent on income than their male counterparts (row 1, column 4). These findings corresponds to our intuitive understanding in the difference of males and females, and this difference might also contribute to the difference in happiness. As such, I will keep this gender variability in analysis without conducting hierarchical analysis. 
+
+&emsp;&emsp;It is also observed in pic A and B that respondents in different age group's difference in attitude of happiness always differ in very modest arange (within 1 score unit) except for item about religion (row 2, column 5), where the youngest and oldest in our sample have a difference in median score as large as 2 units, with a sign of positive trending with aging. These findings might be the result of people tending to turn to religion with aging, or might be the result of the new generations are becoming less interested in religion. No matter which, the difference could be the source of difference in perceived happiness. As such,  I will keep this age-group variability in analysis without conducting hierarchical analysis. 
+
+## 2.2 Factorability of the items
+
+&emsp;&emsp;the factorability of the items was examined. Several well-recognized criteria for the factorability of a correlation were used. 
+
+```{r,fig.cap="**Correlation plot of happiness attitude variables**"}
+#correlation to examine the factorability
+c_matrix <- cor.plot(happyscale[,-1])
+```
+
+&emsp;&emsp;It was observed that all of the 14 items correlated at least 0.3 with at least one other item except for items about religion and nature, suggesting these two items might not load fairly on the latent constructs. However, considering their formative nature to the the attitude of happiness, they will be kept for analysis.
+
+```{r}
+#perform KMO test for factorability
+KMO(c_matrix) 
+```
+
+&emsp;&emsp;The Kaiser-Meyer-Olkin measure of sampling adequacy was .75, indicating middling adequacy according to Kaiser.
+
+```{r}
+#perform bartlett test for factorability
+cortest.bartlett(c_matrix, nrow(happyscale[,-1]))
+```
+
+&emsp;&emsp;Bartlett’s test of sphericity was significant (χ2 (91) = 5340.53, p < .0001), suggesting that the null hypothesis that our matrix be equal to an identity matrix was objected, and hence good factorability. 
+
+## 2.3 Estimating factor structure
+
+```{r}
+library(GPArotation)
+fa.parallel(happyscale[,-1], fa = "fa", fm = "ml", plot = T) 
+nfactors(c_matrix, n=6, rotate = "oblimin", fm = "pa", n.obs=14)
+```
+
+&emsp;&emsp;The parallel analysis and scree plot (showing 6 factors above eigenvalues of simulated data ) based on correlation matrix suggested 6-factor structure. Meanwhile the VSS is favorable to a five-dimensional interpretation. All other statistics suggest a single dimension. As such, factor structures with 2 to 6 factors will be examined, with specific preference over 5 factor structure.
+
+## 2.4 Presetting parameters
+
+&emsp;&emsp;I will load the variables on 5 and 6 factors based on the result of above analyses. Both varimax and oblimin rotations will be adopted because of the fact that dimension of attitude of happiness is a under-studied area and no presumption could be easily reached. I assumed that there was some latent construct called "attitude of happiness" that is influencing how people answer these questions, and hence principle axis factoring (PAF) was adopted instead of principle component analysis (PCA; on other hand, PCA is orthogonal by nature). Since the assumption of multivariate normality is severely violated, I also did not adopt maximum likelihood factoring. 
+
+### 2.4.1 Five-factor structure
+
+**2.4.1.1 Orthogonal rotation**
+
+```{r}
+fa5 <- fa(happyscale[,-1], nfactors = 5, rotate = "varimax", fm = "pa", scores = "regression")
+fa5
+fa.diagram(fa5, cut = 0, digits =2, main = "Factor Analysis, Oblimin rotation")
+print(fa5$loadings,cutoff = 0.3, sort=TRUE)
+```
+
+&emsp;&emsp;No overloading is detected in Five-factor Structure via orthogonal rotation. Loadings are fairly high on most items, except for religion (loading = 0.35). This is not out of expectation since it was reported that religion has very sophisticated relation with happiness and there are a multitude of types of religions, the attitude towards happiness of which might differ tremendously. 
+
+**2.4.1.2 Oblique rotation**
+
+```{r}
+fa5_obl <- fa(happyscale[,-1], nfactors = 5, rotate = "oblimin", fm = "pa", scores = "regression")
+fa5_obl
+fa.diagram(fa5_obl, cut = 0, digits =2, main = "Factor Analysis, Oblimin rotation")
+print(fa5_obl$loadings,cutoff = 0.3, sort=TRUE)
+```
+&emsp;&emsp;Correlation coefficients among the factors ranges from 0.09 to 0.34, which are basically low, indicating the appropriateness of orthogonal rotation.
+
+### 2.4.2 Five-factor structure
+
+**2.4.2.1 Orthogonal rotation**
+
+```{r}
+fa6 <- fa(happyscale[,-1], nfactors = 6, rotate = "varimax", fm = "pa", scores = "regression")
+fa6
+fa.diagram(fa6, cut = 0, digits =2, main = "Factor Analysis, Oblimin rotation")
+print(fa6$loadings,cutoff = 0.3, sort=TRUE)
+```
+&emsp;&emsp;Some overloading is present (such as influence loads on both PA2 and PA3). "likejob" singly loads on PA1 and also has overloading on PA3. If it were moved to PA3, the structure would become exactly the same with five-factor solutions. Hence, the five-factor structure is preferred over the 6 factor one.
+
+**2.4.2.2 Oblique rotation**
+
+```{r}
+fa6_obl <- fa(happyscale[,-1], nfactors = 6, rotate = "oblimin", fm = "pa", scores = "regression")
+fa6_obl
+fa.diagram(fa6_obl, cut = 0, digits =2, main = "Factor Analysis, Oblimin rotation")
+print(fa6_obl$loadings,cutoff = 0.3, sort=TRUE)
+```
+
+&emsp;&emsp;The overloading is also present and correlations between factors are still not high (0.05 to 0.44, more than a half below 0.2), indicating the inappropriateness of using oblique rotation. 
+
+### 2.4.3 determine the factor structure
+
+&emsp;&emsp;The five-factor structure with orthogonal rotation is the most preferred factor solution for fin's attitude of happiness. PA1 corresponds to autonomy of life; PA2 corresponds to accomplishment; PA3 corresponds to positive relationships; PA4 corresponds to productivity (health is the premise for productivity); PA5 corresponds to mindfulness.
+
+## 2.5 generate and examine factor scores
+
+### 2.5.1 generate factor scores
+
+```{r}
+#generating factor scores
+happyScores  <-  as.data.frame( 
+  factor.scores(happyscale[,-1], fa5)$scores)  %>% 
+  mutate(FSD_ID = happyscale$FSD_ID)  %>% 
+  rename(autonomy = PA1,
+         accomplishment = PA2,
+         relationship = PA3,
+         productivity= PA4,
+         mindfulness = PA5)
+happyScores <- round(happyScores, 2)
+#merge the happyScores data set with happyfin
+happyfin  <-  full_join(happyfin, happyScores)
+#inspect
+happyfin %>% select(relationship : ncol(happyfin)) %>% head
+```
+### 2.5.2 examine and modify factor scores
+
+**2.5.2.1 examine distributions** 
+
+```{r, fig.width=8, fig.height=4}
+happyScores %>% 
+  pivot_longer(relationship:mindfulness, 
+               names_to = "factors", 
+               values_to = "scores") %>% 
+  ggplot(aes(x = scores, fill = factors)) +
+  geom_histogram() +
+  facet_wrap(~factors) +
+  theme(legend.position = "none", 
+        plot.title = element_text(size =20))+
+  labs(title = "Distribution of variables about happiness attitude")
+```
+
+&emsp;&emsp;From the histograms, it is observed that accomplishment and autonomy is basically noramlly distributed, while mindfulness, productivity and relationship are negatively skewed to different degrees. 
+
+**2.5.2.2 modify distributions** 
+
+&emsp;&emsp;In logistic regression, no presumption of multivariate normality is required for independent variables, and hence these factor scores will enter model without any conversion. However, in doing descriptive statistics, variables with different distribution features need to be described via different indicators. It is better to align the factor scores' distribution before observing them. Here I will use the following formulas to achieve rough normality for all factor scores. 
+
+When the negative skewness is moderate
+$$
+\sqrt{\max\left(x+1\right)-x}
+$$
+
+When the negative skewness is greater
+$$
+\log_{10}{\max\left(x+1\right)-x}
+$$
+
+When the negative skewness is severe
+$$
+1/({\max\left(x+1\right)-x})
+$$
+
+a. transform productivity 
+
+```{r,fig.cap="**Normality of productivity before and after transformation**"}
+#transform productivity 
+happyfin$productivity_trans <- sqrt(max(happyfin$productivity+1) - happyfin$productivity)
+
+#check the effect of transformation
+before1 <-happyfin %>%  #hisogram before
+  ggplot(aes(x = productivity))+
+  geom_histogram(fill ="lightblue", color = "black") +
+  labs(title ="Before tansformation", x = "Productivity before transformation") 
+after1<- happyfin %>%  #histogram after
+  ggplot(aes(x = productivity_trans))+
+  geom_histogram(fill ="coral", color = "black") +
+  labs(title ="After tansformation", x = "Productivity after transformation") 
+before1.5 <- happyfin %>% #qq plot beofre
+  ggplot(aes(sample = productivity))+
+  geom_qq(color = "red", shape = 1) +
+  geom_qq_line(color = "blue")
+after1.5 <- happyfin %>%  #qq plot after
+  ggplot(aes(sample = productivity_trans))+
+  geom_qq(color = "red", shape = 1) +
+  geom_qq_line(color = "blue")
+
+before1/before1.5|after1/after1.5
+```
+
+b. transform relationship 
+
+```{r,fig.cap="**Normality of relationship before and after transformation**"}
+#transform relationship
+happyfin$relationship_trans <- 1/(max(happyfin$relationship+1) - happyfin$relationship)
+
+
+#check the effect of transformation
+before2 <-happyfin %>%  #histogram before
+  ggplot(aes(x = relationship))+
+  geom_histogram(fill ="lightblue", color = "black") +
+  labs(title ="Before tansformation", x = "Relationship before transformation") 
+
+after2<- happyfin %>%  #histogram after
+  ggplot(aes(x = relationship_trans))+
+  geom_histogram(fill ="coral", color = "black") +
+  labs(title ="After tansformation", x = "Relationship after transformation") 
+
+
+before2.5 <- happyfin %>% #qq plot before
+  ggplot(aes(sample = relationship))+
+  geom_qq(color = "red", shape = 1) +
+  geom_qq_line(color = "blue")
+after2.5 <- happyfin %>% #qq plot after
+  ggplot(aes(sample = relationship_trans))+
+  geom_qq(color = "red", shape = 1) +
+  geom_qq_line(color = "blue")
+
+before2/before2.5|after2/after2.5
+```
+
+c. transform mindfulness
+
+```{r,fig.cap="**Normality of mindfulness before and after transformation**"}
+#transform mindfulness
+happyfin$mindfulness_trans <- sqrt(max(happyfin$mindfulness+1) - happyfin$mindfulness) 
+
+#check the effect of transformation
+before3 <-happyfin %>%  #histogram before
+  ggplot(aes(x = mindfulness))+
+  geom_histogram(fill ="lightblue", color = "black") +
+  labs(title ="Before mindfulness", x = "Productivity before mindfulness") 
+after3<- happyfin %>%  #histogram after
+  ggplot(aes(x = mindfulness_trans))+
+  geom_histogram(fill ="coral", color = "black") +
+  labs(title ="After mindfulness", x = "Productivity after mindfulness") 
+before3.5 <- happyfin %>% #qq plot before
+  ggplot(aes(sample = mindfulness))+
+  geom_qq(color = "red", shape = 1) +
+  geom_qq_line(color = "blue")
+after3.5 <- happyfin %>%  #qq plot after
+  ggplot(aes(sample = mindfulness_trans))+
+  geom_qq(color = "red", shape = 1) +
+  geom_qq_line(color = "blue")
+
+before3/before3.5|after3/after3.5
+```
+
+&emsp;&emsp;Now I get the transformed factor scores (productivity_trans, relationship_trans, mindfulness_trans), which are roughly normally distributed. They will be used for relevant descriptive statistics. 
+
+**2.5.2.3 examine the correlation between happiness-related factor scores and levels of perceived happiness by happiness attitudes **
+
+&emsp;&emsp;This is examined to find out if self-perceived happiness is correlated with any happiness attitude.
+
+```{r, fig.width=8, fig.height=4}
+
+happyfin %>% filter(!gender == "Other") %>% 
+  select(c(accomplishment, autonomy, mindfulness_trans, productivity_trans, relationship_trans), feel_happy, if_feel_happy, gender) %>% 
+  pivot_longer(accomplishment:relationship_trans,
+               names_to = "factors", 
+               values_to = "scores") %>% 
+  ggplot(aes(x= as.integer(feel_happy), y = scores)) +
+  stat_summary(fun.data = "mean_sdl",
+               fun.args = list(mult=1),
+               geom = "ribbon",
+               fill = "#EB5286",
+               alpha = .3) +
+  stat_summary(fun.data = "mean_sdl",
+               fun.args = list(mult=1),
+               geom = "pointrange") +
+  facet_wrap(~ factors) +
+  theme(axis.text.x = element_text(size = 10),
+        axis.title.x = element_text(size = 15), 
+        plot.title = element_text(size=15))+
+  labs(x = "Levels of perceived happiness \n from 1 to 4: not at all happy, not very happy, fairly happy and very happy",
+       caption = "Note: The error bars cover mean +/- 1sd",
+       title = "Correlation between happiness-related factor scores and 
+levels of perceived happiness by happiness attitudes")
+```
+
+&emsp;&emsp;It can be observed that the emphasis on attitudes productivity, relationship or mindfulness leads to no notable change in perceived happiness. Increased emphasis on autonomy might lead to increased perceived happiness. The emphasis on accomplishment seems to have a non-linear effect on perceived happiness. Those who are extremely unhappy tending to highlight accomplishment, while those who are moderately unhappy will not give too much emphasis on it. 
+
+**2.5.2.4 generate new variables about happiness attitude emphasis**
+
+&emsp;&emsp;Based on the findings above, we might draw to a preliminary conclusion that the emphasis on some of the aspects of happiness (autonomy and/or accomplishment) attitude would contribute to the change of perceived happiness. As such, I will generate two new variables that depict if an individual's type of happiness attitude emphasis include autonomy and accomplishment, respectively (base on if the score is over 0). Note that raw factor scores will be used here rather than the ones transformed for normality.
+
+```{r, fig.cap= "The effect of empahsis on autonomy and emphasis on accomplishment on how happy Fins are"}
+happyfin <- happyfin %>% 
+  mutate(if_autonomy = 
+#generate a variable about if autonomy is emphasized.
+           case_when(autonomy>0~ "1",
+                     TRUE ~ "0"),
+         if_accomplishment =
+#generate a variable about if accomplishment is emphasized.
+           case_when(accomplishment>0~ "1",
+                     TRUE ~ "0" )
+)
+#stacked bar plot of two new variables by perceived happiness
+p_autonomy <- happyfin %>% 
+  ggplot(aes(x = if_autonomy, fill = feel_happy)) +
+  geom_bar (position = "fill") +
+  theme(legend.position = "none")+
+  labs(x = "Emphasis on autonomy", 
+       y = "Number of respondents") +
+  scale_x_discrete(labels=c("0" = "No", "1" = "Yes"))
+
+p_accomplishment <- happyfin %>% 
+  ggplot(aes(x = if_accomplishment, fill = feel_happy)) +
+  geom_bar (position = "fill")+
+  labs(fill = "how happy you are", 
+       x = "Emphasis on accomplishment", 
+       y = "")+
+  scale_x_discrete(labels=c("0" = "No", "1" = "Yes"))
+p_autonomy+p_accomplishment
+```
+
+&emsp;&emsp;It is interesting to find that if autonomy is emphasized is positively related to being "very happy", and is almost not related to being fairly happy (is it the caveat for being real happy? ^_^); while if accomplishment is emphasized only slightly increased the proportion of being "very happy", but it is greatly related to increased proportion of being "fairly happy".
+
+&emsp;&emsp;However, since autonomy seems to only increase the odds of being very happy, but not to increase notably the number of very happy and fairly happy as a whole (in other words, emphasis on autonomy increases the proportion of "very happy" at the cost of the proportion of "fairly happy"). I should not expect seeing any significant effect in binary logistical regression, indicating the necessity of both logistic regression (to find out the influencing factors for being happy/sad) and ordinal regression (to find out the influencing factors for the levels of being happy/sad) 
+
+&emsp;&emsp;One is not forbidden to have a multitude aspects of happiness to emphasize. Hence, the number of an individual's emphasized aspects of happiness attitude might also contribute to perceived happiness. Here I will generate another variable recording the number of these aspect for each case. 
+
+```{r}
+emph_number <- happyfin %>% 
+  select(1, relationship:mindfulness) %>% 
+  pivot_longer(relationship:mindfulness, 
+               names_to = "factors", 
+               values_to = "scores")%>% 
+  group_by(FSD_ID)%>% 
+  filter(scores > 0) %>% 
+  group_by(FSD_ID) %>% 
+  summarise(n = n())
+
+happyfin <- left_join(happyfin, emph_number) #join the data sets
+happyfin <- happyfin %>% rename("attitude_emph_num" = "n") #rename it 
+
+#check the new variable's relation with perceived happiness
+happyfin %>% 
+  ggplot(aes(x = attitude_emph_num, fill = feel_happy)) +
+  geom_bar (position = "fill")+
+  labs(fill = "How happy are you", 
+       x = "Number of emphasized aspects of happiness attitude",
+       title = "Correlation between number of emphasized happiness attitudes and perceived happiness",
+       y = "Number of respondents")+
+  theme(plot.title = element_text (size = 12))
+```
+
+&emsp;&emsp;It is observed that level of perceived happiness is positively correlated with the number of emphasized happiness attitude aspects. This makes sense. People who have more source of happiness will be more likely to have some of these sources fulfilled. 
+
+# 3. Modeling fin's perceieved happiness
+
+## 3.1 Descriptive statistics about Fin's happiness
+
+### 3.1.1 Proportion of Fins' perceived happiness
+
+```{r}
+piedata_happy <- happyfin %>% 
+  group_by(feel_happy) %>% 
+  summarise(n = n())
+labels_happy <- get_labels(happyfin$feel_happy)
+pie(piedata_happy$n, labels_happy)
+```
+
+&emsp;&emsp;More than 3/4 Fins are happy. No surprise. 
+
+### 3.1.2 Proportion of fins who are happy by gender
+
+```{r}
+#plot it
+happyfin %>% 
+  ggplot(aes(x = gender, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 25),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by gender",
+       fill = "How happy are you",
+       y = "Number of respondents") 
+##Category "Other"'s proportion looks very different from others, check if 
+#the group has a representative sample size. 
+happyfin %>% filter(gender == "Other") %>% nrow()
+```
+
+&emsp;&emsp;Gender does not show any effect on Fin's perceived happiness. However, since it is an important demographic feature and might interact with other predictors. __Variable "gender" will still enter preliminary model to test its effect on outcome.__ Due to the small sample of gender category "Other" (n = 21), analysis might be biased. I will not include it in the following descriptives and modeling. 
+
+```{r}
+#generate a variable with same values but different name for ease of modeling
+happyfin <- happyfin %>% 
+  mutate(gender_enter = gender)
+```
+
+### 3.1.3 Fin's perceived happiness by age 
+
+**3.1.3.1 by age group**
+
+```{r}
+# plot it 
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = age, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 25),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by age& gender",
+       fill = "How happy are you",
+       y = "Number of respondents") +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;Young adults under 25 years old and senior citizens over 56 years old tend to be happier than adults between 26 and 55. Although this effect is more pronounced for males, it is also present in females, indicating __age group is appropriate to enter our model after transforming into 3 categories__.
+
+**3.1.3.2 by age **
+
+```{r}
+# convert Year of Birth to age (as of 2020)
+happyfin <- happyfin %>% 
+  mutate(years_old = 2002-YOB)
+
+#plot it
+happyfin %>% filter(!gender == "Other")%>% 
+  ggplot(aes(x = feel_happy, y = years_old))+
+  geom_dotplot(binaxis = "y", 
+               stackdir = "center", 
+               dotsize = 0.1,
+               position = position_jitter(0.01),
+               width = 0.5,
+               method = "histodot")  +
+  stat_summary(fun.data = "mean_cl_normal",
+               geom = "errorbar", 
+               width = 0.1,
+               color = "red") +
+  facet_wrap(~gender) +
+  labs(y = "Age", 
+       x = "", 
+       title = "Fin's age by perceived happiness",
+       caption = "Note: Error bars are 95% CIs")+
+  theme(axis.text.x = element_text(angle = 15))
+```
+
+&emsp;&emsp; Fairly happy and Not very happy respondents seem to have significantly different age for males, but not for females and not across other perceived-happiness groups. Some non-linear relationship might be present. Age groups could work better than age as number. As such, __age group (variable "age") rather than raw age will be used as predictor.__ 
+
+```{r}
+#transform age group into a variable with 3 categories that will enter model
+happyfin <- happyfin %>% 
+  mutate(age_enter = 
+           case_when(age == "26 - 35 years" ~ "26~55 years",
+                     age == "36 - 45 years" ~ "26~55 years",
+                     age == "46 - 55 years" ~ "26~55 years",
+                     age == "56 - 65 years" ~ "Over 55 years",
+                     age == "Over 65 years" ~ "Over 55 years",
+                     age == "18 - 25 years" ~ "18 - 25 years") %>%
+           factor()) 
+
+```
+
+### 3.1.4 Fin's perceived happiness and attitude of happiness
+
+&emsp;&emsp;See 2.5.2.3 , the conclusion is  number of emphasized attitude of happiness and if autonomy or accomplishment is emphasized will enter the model. 
+
+```{r}
+#generate variables with same values but different names for ease of modeling
+happyfin <- happyfin %>% 
+  mutate(if_autonomy_enter = if_autonomy %>% factor(),
+         if_accomplishment_enter = if_accomplishment %>% factor(),
+         attitude_emph_num_enter = attitude_emph_num,
+         relationship_enter = relationship ,
+         productivity_enter = productivity,
+         autonomy_enter = autonomy,
+         accomplishment_enter = accomplishment,
+         mindfulness_enter = mindfulness)
+```
+
+### 3.1.5 Fin's perceived happiness and alcohol use
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = alco_family_state, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 25),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by alcohol-use& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;A non-alcoholic from a non-alcoholic family is positively related to being very and fairly happy. An alcoholic from an alcoholic family has higher odds being unhappy. These effects are consistent across different gender. __Variable "alco_family_state" will enter the model.
+
+```{r}
+#generate a variable with same values but different name for ease of modeling
+happyfin <- happyfin %>% 
+  mutate(alco_family_state_enter = alco_family_state %>% factor())
+```
+
+### 3.1.6 Fin's perceived happiness and  residence polulation
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = resi_population, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 40),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by residence-population& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;Male living in residential area with under 4,000 inhabitants tend to have bigger odds to be unhappy, while females living in 4,000~8000 population area tend to have more odds to be unhappy. for other subcategories of population, differences are present but very small. Hence, __variable "resi_population" will enter the model after being re-categorized.__
+
+```{r}
+#transform "resi_population" into a variable with 2 categories that will enter model
+happyfin <- happyfin %>% 
+  mutate(resi_population_enter = 
+           case_when(resi_population == "Under 4,000 inhabitants" | resi_population == "4,000 - 8,000 inhabitants" ~ "Less than 8,000 inhabitants",
+                     TRUE ~ "Over 8,000 inhabitants") %>% factor())
+```
+
+
+### 3.1.7 Fin's perceived happiness and employer types
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = employer, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 40),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by employer-type& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;People who are not in paid work tend to have bigger odds to be unhappy irrespective of gender. Other type of employers seems not to have notable effect on perceived happiness. Note that although male respondents who are working in voluntary or civi associations also show bigger oddes being unhappy, this category has relatively less representative sample size and this observation could be the result of sampling errors. As such, it is considered a meaningful effect. Hence, __variable "employer" will enter the model after being re-categorized.__
+
+```{r}
+#transform "employer" into 2 categories that will enter model
+happyfin <- happyfin %>% 
+  mutate(employer_enter = 
+           case_when(employer == "Not in paid work" ~ "Not in paid work",
+                     TRUE ~ "Paid work") %>% as.factor())
+
+```
+
+
+### 3.1.8 Fin's perceived happiness and working type (full/parttime work)
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = work_hour, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 40),
+        axis.title.x = element_blank()) +
+  labs(y = "Counts", 
+       title= "Counts of perceived happiness by residential population type of work& sex") +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;All types of work seems not to have notable effect on perceived happiness, except for half-time. Half-time male worker reported a bigger odds of being unhappy, while, interestingly, half-time female works reported a bigger odds of being happy. Considering this category is extremely under-representative (n = 29), I do not see it as a meaningful effect. As such, type of work will not enter the model for perceived happiness. 
+
+### 3.1.9 Fin's perceived happiness and education
+
+**3.1.9.1 basic education**
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = education_basic, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 20),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by basic-education& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;People who had upper secondary education tend to have more odds of being happy across gender. Hence, __variable "education_basic" will enter the model after being re-categorized.__
+
+```{r}
+#transform "education_basic" into a variable with 2 categories that will enter model
+happyfin <- happyfin %>% 
+  mutate(education_basic_enter = 
+           case_when(education_basic == "Upper secondary education (matriculation examination)" ~ "Upper secondary education",
+                     TRUE ~ "primary or lower secondary education") %>% as.factor())
+
+```
+
+**3.1.9.2 vocational education**
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = education_prof, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, 
+                                   angle = 40,
+                                   size = 6),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by vocational-education& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;People who had no vacation education tend to have more odds of being unhappy across gender. Hence, __variable "education_prof" will enter the model after being re-categorized.__
+
+```{r}
+#transform "education_prof" into a variable with 2 categories that will enter model
+happyfin <- happyfin %>% 
+  mutate(education_prof_enter = 
+           case_when(education_prof == "No vocational education" ~ "No vocational education",
+                     TRUE ~ "Any type of vocational education") %>% 
+           as.factor())
+```
+
+### 3.1.10 Fin's perceived happiness and occupation
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = occupation, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 40),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by occupation& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+#evaluate the sample size of each category
+happyfin %>% count(occupation)
+```
+
+&emsp;&emsp;Considering half of the categories under this variable only have under-representative sample size and for those categories with large enough samples, the proportion of perceived happiness looks consistent across them. this variable will not enter the model.
+
+### 3.1.11 Fin's perceived happiness and industry
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = industry, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 40),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by industry& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+
+```
+
+### 3.1.13 Fin's perceived happiness and union participation
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = union_if, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "right", 
+        axis.text.x = element_text(hjust = 1, angle = 40),
+        ) +
+  labs(title= "Number of respondents' perceived happiness by union-participation& gender",
+       fill = "How happy are you",
+       y = "Number of respondents",
+       x = "Union participation")  +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;Fin's percevied happiness seems to be consistent across people who join union or not, irrespective of the gender. Therefore, this variable will not enter the model.
+
+### 3.1.13 Fin's perceived happiness and political stand
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = party_vote, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, 
+                                   angle = 90,
+                                   size = 7),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by political-stand& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+
+#evaluate the sample size of each category
+happyfin %>% count(party_vote)
+```
+
+&emsp;&emsp;Considering half of the categories under this variable only have under-representative sample size and for those categories with large enough samples, the proportion of perceived happiness looks consistent across them. this variable will not enter the model.
+
+### 3.1.14 Fin's perceived happiness and social class
+
+```{r}
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = social_class, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 40),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by sociial-class& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+
+#evaluate the sample size of each category
+happyfin %>% count(social_class)
+```
+
+&emsp;&emsp;Fin's perceived happiness seem to have a linear relationship with the change of social class. The only problem is this trend does not work well in Upper Class respondents. This is possibly due to the extremely small sample size of this category. Considering this, I will combine it with upper middle class. Those who chose the category "Do not belong to any class" might also have some special features influencing perceived happiness, and therefore this category will be kept.
+
+
+```{r}
+#transform "social_class" into 2 categories that will enter model
+happyfin <- happyfin %>% 
+  mutate(social_class_enter = as.character(social_class)) 
+happyfin <- happyfin %>% 
+  mutate(across(social_class_enter, 
+                ~replace(.,.=="Upper middle class"|. == "Upper class", 
+                         "Upper middle or upper class"))) %>% 
+  mutate(social_class_enter = as.factor(social_class_enter))
+happyfin %>% count(social_class_enter)
+```
+
+
+### 3.1.15 Fin's perceived happiness and household income
+
+```{r}
+#plot it
+happyfin %>% filter(!gender == "Other") %>% 
+  ggplot(aes(x = househould_income, fill = feel_happy)) +
+  geom_bar(position ="fill")+
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(hjust = 1, angle = 40),
+        axis.title.x = element_blank()) +
+  labs(title= "Number of respondents' perceived happiness by household-income& gender",
+       fill = "How happy are you",
+       y = "Number of respondents")  +
+  facet_wrap(~gender)
+```
+
+&emsp;&emsp;Fin's perceived happiness seem to have a linear relationship with the increase of household income.  Category "Don't want to say" will be transformed to NA before this variable enters model.
+
+```{r}
+#generate a variable with same values but different name for ease of modeling (Don't want to say →NA )
+happyfin <- happyfin %>% 
+  mutate(househould_income_enter = househould_income) %>% 
+  mutate(across(househould_income_enter, ~replace(.,. == "Don't want to say", NA)))
+```
+
+## 3.2 Modeling Fin's binary perceieved happiness (happy/sad)
+
+### 3.2.1 check variables that will enter model
+
+```{r}
+# variables that will enter model
+happyfin %>% select(ends_with("enter")) %>% glimpse()
+# pass their names to an object
+# all possible variables
+enter_all_vars <- happyfin %>% select(ends_with("enter")) %>% colnames()
+# most interested variables: happiness-related variables
+enter_vars_happy <- happyfin %>% select(if_autonomy_enter:mindfulness_enter) %>% colnames()
+```
+
+### 3.2.2 regress happy/sad on happiness-attitude-related variables
+
+**3.2.2.1 all on happiness-attitude-related variables as predictors**
+
+```{r}
+formula_happy_vars <- as.formula(paste('if_feel_happy ~', paste(enter_vars_happy, collapse='+')))
+fit_happy_vars <- glm(formula_happy_vars, family = binomial, data = happyfin)
+fit_happy_vars  %>% 
+  tidy(conf.int = TRUE, exp = TRUE) %>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), ".")))%>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp; Logistic regression presumes the linear relationship between the numeric predictors and predicted outcome. Here I will check if this is violated for any happiness attitude predictors using loess smoothing, especially for those insignificant in model, to evaluate if other modeling method is necessary to adopt.
+
+```{r}
+#check function form
+happyfin_cff <- happyfin %>% 
+  select(enter_vars_happy) %>% 
+  na.omit()
+  
+
+happyfin_cff$probabilities <- predict(fit_happy_vars, 
+                                              type = "response")
+happyfin_cff <- happyfin_cff %>% 
+  mutate(logit = 
+           log(probabilities/(1-probabilities)
+               )
+         ) 
+
+happyfin_cff %>% 
+ select_if(is.numeric) %>% 
+  pivot_longer(-c("probabilities", "logit"), 
+               names_to = "predictors", 
+               values_to = "predictor_value") %>% 
+  filter(predictors != "attitude_emph_num_enter") %>% 
+  ggplot(aes(x = logit, y = predictor_value)) +
+  geom_point(alpha = 0.5, color = "blue", size = 0.3) +
+  geom_smooth(method = "loess", color = "red", size = 0.5)+
+  facet_wrap(~predictors, scales = "free_y")+
+  theme_bw()+
+  labs(x = "Logit of predicted probability", 
+       y = "Predictor value",
+       title = "Predictor values against Logits of predicted probability for
+happiness attitude variables")
+
+```
+
+&emsp;&emsp;The presumption of linearity is roughly met, especially for the insignificant  predictors (productivity and accomplishment). No other modeling technique will be tried
+
+&emsp;&emsp; Insignificant predictors at α = 0.1 level, such as if_autonomy, productivity, ect. will be removed in the next step to maximize the variability explained by significant predictors. A more widely-adopted level of 0.05 will not be adopted here since p values approaching to 0.05 might reach it after removing insignificant variables. As such, in the next step α = 0.05 will be used.
+
+**3.2.2.2 modelling with insignificant variables removed**
+
+```{r}
+#generate the formula for logistic regression
+
+fit_happy_vars_sig <- happyfin %>% glm(if_feel_happy ~ if_accomplishment_enter + relationship_enter + autonomy_enter+mindfulness_enter, family = binomial, data = .)
+fit_happy_vars_sig  %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), ".")))%>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+
+#autonomy_enter is still not significant at α=0.05 level, it is hence removed. 
+
+fit_happy_vars_sig <- happyfin %>% glm(if_feel_happy ~ if_accomplishment_enter + relationship_enter +mindfulness_enter, family = binomial, data = .)
+fit_happy_vars_sig  %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+?if_else
+```
+
+&emsp;&emsp; Variables "if_accomplishment_enter", "relationship_enter" and "mindfulness_enter" will be used in the following modelling.
+
+### 3.2.3 regress happy/sad on alcohol-related variables
+
+**3.2.3.1 all alcohol-related variables as predictors**
+
+```{r}
+fit_alcohol_vars <- happyfin %>% glm(if_feel_happy ~ alco_family_state_enter, family = binomial, data = .)
+fit_alcohol_vars  %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp; Comparing the the reference level "an alcoholic from alcoholic family", only the level "non-alcoholic from a non-alcoholic family"'s effect approaches significant level at α = 0.05. Consequently, I will re-code the levels.
+
+```{r}
+happyfin <- happyfin %>% 
+  mutate(alco_family_state_enter = 
+           case_when(alco_family_state_enter == "non_alco_nonalcofamily" ~ "non_alco_nonalcofamily",
+                     is.na(alco_family_state_enter) ~ NA_character_,
+                     TRUE ~ "either alcoholic or from a alcoholic family"))
+```
+
+**3.2.3.2 re-coded alcohol-related variables as predictors**
+
+&emsp;&emsp; Now I will redo the modelling with the newly-coded variable. 
+
+```{r}
+fit_alcohol_vars_sig <- happyfin %>% glm(if_feel_happy ~ alco_family_state_enter, family = binomial, data = .)
+fit_alcohol_vars_sig  %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp; The recoded variable shows significant effect. Wonderful! And this really has practical plausibility that either being alcoholic or having an alcoholic family member will compromise the sense of happiness. 
+
+### 3.2.4 control for confounders
+
+**3.2.4.1 happiness attitudes controlled for alcoholic usage**
+
+```{r}
+fit_happy_vars_control1 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        if_accomplishment_enter + relationship_enter +mindfulness_enter + alco_family_state_enter, 
+      family = binomial, 
+      data = .)
+
+fit_happy_vars_control1  %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp; By controlling for alcohol usage, the accomplishment, relationship and mindfulness attitudes still show significant effect in predicting happy/sad.
+
+**3.2.4.2 further controlled for basic demographics**
+
+&emsp;&emsp; Age group and sex might be important confonders, theoretically. I will further control for them here.
+
+```{r}
+fit_happy_vars_control2 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        if_accomplishment_enter + relationship_enter +mindfulness_enter + alco_family_state_enter + age_enter + gender_enter, 
+      family = binomial, 
+      data = .)
+fit_happy_vars_control2 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp; It is found that gender does not have any effect on being happy/sad. This makes sense since people with both sexes in same age group are always equally happy/sad, for example, we rarely see melancholic kids, mo matter which sex. On the other hand, gender does show an effect and by controlling for it, the variability explained by alcohol use decreases tremendously. Why does this happen? I will check the relationship between age group and alcoholic usage.
+
+```{r}
+happyfin %>% 
+  filter(!is.na(age_enter),!gender_enter == "Other") %>% 
+  ggplot(aes(x = age_enter, fill = alco_family_state_enter)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~gender_enter) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 8),
+        legend.position = "bottom") +
+  labs(fill = "", 
+       title = "Alocohol use(per se and family member) by age for each sex",
+       y = "Number of participants")
+```
+
+&emsp;&emsp;According to the bar plot, it is clear that there is a trend of having less odds of being a alcoholic or from an alcoholic family with the increasing of age, especially true for males over 55 years. This explains why age takes away the variability explained by alcohol usage. However, we should note that this is a cross-sectional study, and hence the explanation could be either alcoholic male Fins starts withdrawing from alcohol with aging, or young male Fins are more likely to be alcoholic than Fins in old days. If the former is true, it is good news. While if it is the later that is true, it is bad news. Anyway, gender seems to also have an effect on it. Considering gender's not significant in the model, I will remove it and remodel, to see how the effect changes.
+
+```{r}
+# remodel with gender removed
+fit_happy_vars_control2 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        if_accomplishment_enter + relationship_enter +mindfulness_enter + alco_family_state_enter + age_enter, 
+      family = binomial, 
+      data = .)
+fit_happy_vars_control2 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp;With gender removed, alcohol use gets back its significant influence from age. Since now only age level "26~55 years" is approaching significance, I will re-level this variable and do the modelling again.
+
+```{r}
+#re-level age
+happyfin <- happyfin %>% 
+  mutate (age_enter = 
+           case_when (age_enter == "18 - 25 years" ~ "18~55 years",
+                      age_enter == "26~55 years" ~ "18~55 years",
+                      age_enter == "Over 55 years" ~ "Over 55 years") %>% 
+            factor()
+         )
+
+# remodel 
+fit_happy_vars_control2 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        if_accomplishment_enter + relationship_enter +mindfulness_enter + alco_family_state_enter + age_enter, 
+      family = binomial, 
+      data = .)
+fit_happy_vars_control2 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp;Now all the variables in the model show significant effect on happy/sad. 
+
+**3.2.4.3 further controlled for basic social educational factors**
+
+```{r}
+fit_happy_vars_control3 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        if_accomplishment_enter + 
+        relationship_enter +
+        mindfulness_enter + 
+        alco_family_state_enter + 
+        age_enter + 
+        education_basic +
+        education_prof, 
+      family = binomial, 
+      data = .)
+fit_happy_vars_control3 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp;Education does not show any effect even close to significance. It will not enter the following models.
+
+**3.2.4.4 further controlled for if having a paid job**
+
+```{r}
+fit_happy_vars_control4 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        if_accomplishment_enter + 
+        relationship_enter +
+        mindfulness_enter + 
+        alco_family_state_enter + 
+        age_enter + 
+        employer_enter,
+      family = binomial, 
+      data = .)
+fit_happy_vars_control4 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp; Having a paid job means 2.06 times of odds of being happy, the largest effect as of now. This makes practical sense. In a country with high-standard social welfare such as Finland, people who do not have a paid job would still make them less happier. This might indicate we are not working only for living. This variable will enter following models.  
+
+**3.2.4.5 further controlled for social economic factors**
+
+```{r}
+fit_happy_vars_control5 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        if_accomplishment_enter + 
+        relationship_enter +
+        mindfulness_enter + 
+        alco_family_state_enter + 
+        age_enter + 
+        employer_enter +
+        social_class_enter +
+        househould_income_enter,
+      family = binomial, 
+      data = .)
+fit_happy_vars_control5 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp; Not all levels of social class are significant. I will check it relation with binary happiness to decide how to re-level it.
+
+```{r}
+happyfin %>% 
+  ggplot(aes(x = social_class_enter, fill = if_feel_happy)) +
+  geom_bar(position = "fill") +
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(angle =15, 
+                                   size = 8),
+        axis.title.x = element_blank()) +
+  labs(fill = "", y = "Number of participants",
+       title = "Number of happy/sad participants by social class")
+```
+&emsp;&emsp;The happy/sad proportion of lower middle class is a little bit closer to working class. Plus, the happy/sad proportion of those who "do not belong to any class" are also very close to working class, indicating they might be working class who do not want to disclose their working situation. I will combing them into one class--"working to middle class as well as unknown class" and remodel.
+
+```{r}
+happyfin <- happyfin %>% 
+  mutate(social_class_enter = 
+          case_when(social_class_enter == "Do not belong to any class" ~ "Working to middle class&unknown class",
+                    social_class_enter == "Working class" ~ "Working to middle class&unknown class",
+                    social_class_enter == "Lower middle class" ~ "Working to middle class&unknown class",
+                    social_class_enter == "Middle class" ~ "Middle class",
+                    social_class_enter == "Upper middle or upper class" ~ "Upper middle or upper class") %>% 
+          fct_relevel("Working to middle class&unknown class"))
+```
+
+&emsp;&emsp; Not all levels of household income are significant. I will check it relation with binary happiness to decide how to re-level it.
+
+```{r}
+happyfin %>% 
+  filter(!is.na(househould_income_enter)) %>% 
+  ggplot(aes(x = househould_income_enter, fill = if_feel_happy)) +
+  geom_bar(position = "fill") +
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(angle =15, 
+                                   size = 8),
+        axis.title.x = element_blank()) +
+  labs(fill = "", y = "Number of participants",
+       title = "Number of happy/sad participants by househould income")
+```
+
+&emsp;&emsp; It seems that 10,000 euros/year, ~50,000 euros/year, ~80,000 euros/year are three important cutoffs. I will re-level the variable base on this finding.
+
+```{r}
+#re-level househould income
+happyfin <- happyfin %>% 
+  mutate(
+    househould_income_enter = 
+      case_when (househould_income_enter == 
+                   "Under 10,000 euros/year" ~ "Under 10,000 euros/year",
+                 househould_income_enter ==
+                   "10,000 - 20,000 euros/year" ~ "10,000 - 50,000 euros/year",
+                 househould_income_enter ==
+                   "20,001 - 30,000 euros/year" ~ "10,000 - 50,000 euros/year",
+                 househould_income_enter ==
+                   "30,001 - 40,000 euros/year" ~ "10,000 - 50,000 euros/year",
+                 househould_income_enter ==
+                   "40,001 - 50,000 euros/year" ~ "10,000 - 50,000 euros/year",
+                 househould_income_enter ==
+                   "50,001 - 60,000 euros/year" ~ "50,001 - 80,000 euros/year",
+                 househould_income_enter == 
+                   "60,001 - 70,000 euros/year" ~ "50,001 - 80,000 euros/year",
+                 househould_income_enter ==
+                   "70,001 - 80,000 euros/year" ~ "50,001 - 80,000 euros/year",
+                 househould_income_enter ==
+                   "80,001 - 90,000 euros/year" ~ "Over 80,000 euros/year",
+                 househould_income_enter == 
+                   "Over 90,000 euros/year" ~ "Over 80,000 euros/year") %>% 
+      factor() %>% fct_relevel("Under 10,000 euros/year"))
+
+#remodel with re-leveled variables
+fit_happy_vars_control5 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        if_accomplishment_enter + 
+        relationship_enter +
+        mindfulness_enter + 
+        alco_family_state_enter + 
+        age_enter + 
+        employer_enter +
+        social_class_enter +
+        househould_income_enter,
+      family = binomial, 
+      data = .)
+fit_happy_vars_control5 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp; After controlling for re-leveled social class and household income, alcohol use and emphasis on accomplishment in feeling happy becomes insignificant. These variables will be removed from following models.
+
+```{r}
+fit_happy_vars_control5 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        relationship_enter +
+        mindfulness_enter + 
+        age_enter + 
+        employer_enter +
+        social_class_enter +
+        househould_income_enter,
+      family = binomial, 
+      data = .)
+fit_happy_vars_control5 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+
+**3.2.4.6 further controlled for residential population**
+
+```{r}
+fit_happy_vars_control6 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        relationship_enter +
+        mindfulness_enter + 
+        age_enter + 
+        employer_enter +
+        social_class_enter +
+        househould_income_enter +
+        resi_population_enter,
+      family = binomial, 
+      data = .)
+fit_happy_vars_control6 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp;Residential population does not show significant effect. Remove it. Now that I have gone through all potential predictors, the updated model should be model 5. 
+
+### 3.2.5 model modification
+
+&emsp;&emsp;According to descriptive statistics, the emphasis on mindfulness could be interacted by age. As such, we fit one more model that inlcude the interactions between mindfulness and age group. 
+
+```{r}
+fit_happy_vars_control7 <- happyfin %>% 
+  glm(if_feel_happy ~ 
+        relationship_enter +
+        mindfulness_enter * 
+        age_enter + 
+        employer_enter +
+        social_class_enter +
+        househould_income_enter,
+      family = binomial, 
+      data = .)
+fit_happy_vars_control7 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% 
+  mutate(significance = if_else(p.value > 0.1, "", if_else(p.value<=0.05, if_else(p.value<=0.001, "**", "*"), "."))) %>% 
+  DT::datatable() %>% 
+  formatRound(columns = c(2:7), digits = 2)
+```
+
+&emsp;&emsp;The result shows that their interaction is not significant. The previous model without interaction is still the best. 
+
+
+### 3.2.6 model summary
+   
+&emsp;&emsp;The modeling process is summarized here. Only variables that have significant effecton happy/sad in each step are listed here. Model 1 includes happy-related variables; model 2 includes alcohol use variable; Model 3 combines model 1 and 2 and controls for age; Model 4 uses model 3 and further controls for employed state; Model 5 includes model 4 and further control for social economic situations. 
+
+```{r}
+library(modelsummary)
+models <- list ("Model1
+                (Happiness attitude )" = glm(if_feel_happy ~ 
+                                 if_accomplishment_enter + 
+                                 relationship_enter +
+                                 mindfulness_enter+
+                                 alco_family_state_enter, 
+                               family = binomial, 
+                               data = happyfin), 
+                "Model2
+                (Alcohol usage)" = glm(if_feel_happy ~ 
+                                alco_family_state_enter,
+                                family = binomial, 
+                                data = happyfin), 
+                "Model3
+                (Model1+2 +Demographics)" = glm(if_feel_happy ~
+                                 if_accomplishment_enter +
+                                 relationship_enter +
+                                 mindfulness_enter + 
+                                 alco_family_state_enter + 
+                                 age_enter, 
+                               family = binomial, 
+                               data = happyfin), 
+                "Model4
+                (Model3+employer)" = glm(if_feel_happy ~ 
+                                 if_accomplishment_enter +  
+                                 relationship_enter +
+                                 mindfulness_enter +  
+                                 alco_family_state_enter + 
+                                 age_enter + 
+                                 employer_enter,
+                                 family = binomial, 
+                                 data = happyfin), 
+                "Model5
+                (Model4+SES)" = glm(if_feel_happy ~
+                                 relationship_enter +
+                                 mindfulness_enter + 
+                                 age_enter + 
+                                 employer_enter +
+                                 social_class_enter +
+                                 househould_income_enter,
+                               family = binomial,
+                               data = happyfin))
+
+ modelsummary(
+  models,
+  fmt = 1,
+  estimate  = "{estimate} [{conf.low}, {conf.high}]",
+  statistic = NULL,
+  coef_omit = "Intercept") 
+```
+
+
+```{r, fig.width= 12, ,fig.cap="**Forest plot of the effect of each predictors on happy/sad**"}
+dependent <-  "if_feel_happy"
+explanatory <- c("relationship_enter", "mindfulness_enter", "age_enter", "employer_enter", "social_class_enter", "househould_income_enter")
+
+
+happyfin %>% 
+  or_plot(dependent, explanatory, table_text_size = 3.0,
+          title_text_size = 13) 
+
+```
+
+### 3.2.7 model dignostics
+
+&emsp;&emsp;Linear assumption, multi-collinearity and influential values will be checked for model diagnostics.
+
+**3.2.7.1 linear assumption**
+
+```{r}
+#No NA is allowed in this approach
+#subset the variables and remove NAs
+happyfin_diagnostics <- happyfin %>% 
+  select(relationship_enter, 
+         mindfulness_enter,
+         age_enter, 
+         employer_enter, 
+         social_class_enter, 
+         househould_income_enter) %>% 
+  na.omit()
+
+#generate the predicted probabilities base on the best model
+happyfin_diagnostics$probabilities <- predict(fit_happy_vars_control5, 
+                                              type = "response")
+#compute logit
+happyfin_diagnostics <- happyfin_diagnostics %>% 
+  mutate(logit = 
+           log(probabilities/(1-probabilities)
+               )
+         ) 
+#draw smoothing plot
+happyfin_diagnostics %>% 
+ select_if(is.numeric) %>% 
+  pivot_longer(-c("probabilities", "logit"), 
+               names_to = "predictors", 
+               values_to = "predictor_value") %>% 
+  ggplot(aes(x = logit, y = predictor_value)) +
+  geom_point(alpha = 0.5, size = 0.3, color = "blue") +
+  geom_smooth(method = "loess", color = "red")+
+  facet_wrap(~predictors, scales = "free_y")+
+  theme_bw()+
+  labs(x = "Logit of predicted probability", 
+       y = "Predictor value",
+       title = "Predictor values against Logits of predicted probability for
+happiness attitude variables that enter model")
+
+```
+&emsp;&emsp;The smoothed scatter plots show that variables mindfulness and relationship are all quite linearly associated with the happy/sad outcome in logit scale.
+
+**3.2.7.2 multi-collinearity**
+
+```{r}
+car::vif(fit_happy_vars_control5)
+```
+
+&emsp;&emsp;All variables have a value of VIF well below 2, indicating no collinearity in the current model.
+
+**3.2.7.3 influential values**
+
+```{r}
+#pass model data and relevant indicators such as residual, standardized residual and cook's distance into an object, and also generate an indexing variable.
+model.data <- augment(fit_happy_vars_control5) %>% 
+  mutate(index = 1:n()) 
+
+#check the cases with top 3 highest cook's sd
+model.data %>% top_n(3, .cooksd)
+
+#plot the standardized residuals
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = if_feel_happy), alpha = .5) +
+  theme_bw() +
+  labs(title = "Standardized resiule for each ")
+```
+
+
+
+
+&emsp;&emsp;All standard residuals are within -3 to 3. There is only one case having standardized residual over -2.5, which does not belong to cases with top 3 cook's distance. Hence, no potential influential values that can alter the quality of model is detected.
+
+# 4. Limitations
+
+&emsp;&emsp;Descriptive has shown some predictors might influence the level of perceived happiness (e.g. being very happy or fairly happy) instead of being happy/unhappy. A ordinal regression should be used to check such effects. But this is not done in the current report.
+
+&emsp;&emsp;Self-perceived happiness and other conditions might suffer from biases such as social desirability bias. And different individual might have different standard for happiness.
+
+
+
+# 5. Brief summary of results
+   
+&emsp;&emsp;After controlling for social economic status and demographic features, Fin's emphasis on the importance of relationship and mindfulness contribute to the sense of happiness. Besides, social conditions such as household income and social status are most influential factors for being happy/unhappy. Sex, education and alcohol usage do not influence one's happiness.  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
