@@ -1003,17 +1003,40 @@ test.outlier(d3, y, x) |>
   DT::datatable()
 ```
 
-Besides, the plot below shows there is a high leverage data point in data 3 model.
+Besides, the leverage vs studentized residual plot below also shows there is an out-lier with medium level of leverage data point in data 3 model.
 
 ```{r}
 #install.packages('plotrix')
 library(plotrix)
-
-studentized.residual <- rstudent(model3)
-leverage <-hatvalues(model3)
-plot(studentized.residual ~leverage, main = "Leverge vs residual plot for data 3 model")
+#leverage and studentized residual for model3
+studentized.residual3 <- rstudent(model3)
+leverage3 <-hatvalues(model3)
+#plot leverage versus studentized residuals
+plot(studentized.residual3 ~leverage3, main = "Leverge vs residual plot for data 3 model")
 draw.circle(x=0.236, y=1200, radius=0.005, border = "red")
 ```
+
+
+
+```{r}
+#leverage and studentized residual for model4 (d4 data)
+studentized.residual4 <- rstudent(model4)
+leverage4 <-hatvalues(model4)
+#leverage and studentized residual for model2 (d2 data)
+studentized.residual2 <- rstudent(model2)
+leverage2 <-hatvalues(model2)
+#leverage and studentized residual for model1 (d1 data)
+studentized.residual1 <- rstudent(model1)
+leverage1 <-hatvalues(model1)
+
+par(mfrow = c(2,2))
+
+plot(leverage1, type = "h")
+plot(leverage2, type = "h")
+plot(leverage3, type = "h")
+plot(leverage4, type = "h")
+```
+
 
 # Problem 6 [6 points]
 
@@ -1096,7 +1119,7 @@ $$
 \frac{1}{e} \approx \frac{1}{2.71828} \approx 0.3678
 $$
 
-#Problem 7
+# Problem 7
 
 ## P7-Task a
 
