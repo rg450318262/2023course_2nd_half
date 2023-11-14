@@ -1,0 +1,1270 @@
+---
+title: "E1 assignment"
+output: 
+   pdf_document
+date: "2023-11-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, warning = F, message = F, echo = FALSE)
+```
+
+# Problem 1 *[6 points]*
+
+In this problem, you will preprocess and explore a data set about atomic structures of molecules. The data set p1.csv is a subset of the GeckoQ data set from the term project.
+
+Lab section 2.3 of ISLR_v2 (or ISLP) contains useful information for solving this problem.
+
+## P1-Task a
+
+### Task a: Question
+
+Read p1.csv into a data frame and familiarize yourself with the data. You may want to read the data description from the term project.
+
+Drop the columns ["id", "SMILES", "InChlKey"].
+
+### Task a: My answer
+
+```{r}
+library(here)
+library(tidyverse)
+p1 <- read_csv(file.path(here(), "IML", "data", "data_E1","p1.csv"))
+```
+
+These are the columns remained before dropping three as required
+
+```{r}
+colnames(p1)
+```
+
+```{r}
+#n of cols before removal
+p1ncol.before <- ncol(p1)
+#remove 3 columns
+p1[,c("id", "SMILES", "InChIKey")] <- NULL
+#n of cols after removal
+p1ncol.after <- ncol(p1)
+#Check removal
+#p1ncol.before == (p1ncol.after+3)
+```
+These are the columns remained after dropping three as required
+
+```{r}
+colnames(p1)
+```
+
+## P1-Task b
+
+### PQuestion
+
+Select the columns ["pSat_Pa","NumOfConf","ChemPot_kJmol"] from the data frame and print their summary statistics.
+
+### My answer
+
+```{r}
+summary <- p1 |> 
+  dplyr::select(
+    pSat_Pa,
+    NumOfConf,
+    ChemPot_kJmol
+  ) |> 
+  summary()
+```
+
+The summary, after removing the three columns, is `r summary`.
+
+## P1-Task c
+
+### Task c: Question
+
+Extract the data in the column ChemPot_kJmol of the data frame to an array. Calculate the mean and standard deviation of this array.
+
+### Task c: My answer
+
+```{r}
+#extract a column into an array
+myarray <- 
+  p1$ChemPot_kJmol |> 
+  array() 
+
+#mean of the column
+mean <- myarray |> mean(na.rm = T)
+#sd of the column
+sd <- myarray |> sd(na.rm = T)
+```
+
+Mean is `r mean`, standard deviation is `r sd`.
+
+## P1-Task d
+
+### P1-Task d: Question
+
+Produce side-by-side plots of:
+
+• a histogram of pSat_Sa in base 10 logarithmic units.
+
+• a boxplot of NumOfConf.
+
+Tip: In Python, you can use hist() and boxplot() in the matplotlib package. In R, you can use hist and boxplot. The command par(mfrow=c(1,2)) divides the plot window into two regions so that you can visualize the 2 plots simultaneously.
+
+### P1-Task d: My answer
+
+The boxplot and histogram are shown below.
+
+```{r}
+library(kableExtra)
+par(mfrow=c(1,2))
+# the histogram is:
+p1$pSat_Pa |> 
+  log10() |> 
+  hist(
+    xlab = "pSat_Pa", 
+    ylab = "Frequency", 
+    main = "Histogram of pSat_Pa \n(in base log10 units)"
+    )
+# the boxplot is:
+p1$NumOfConf |> 
+  boxplot(
+    xlab = "NumOfConf", 
+    ylab = "Frequency", 
+    main = "Boxplot of NumOfConf "
+    )
+```
+
+## P1-Task e
+
+### Question
+
+Produce a scatterplot matrix of the variables ["MW", "HeatOfVap_kJmol", "FreeEnergy_kJmol"]. Tip: In Python you can use seaborn.pairplot(). In R, you can use pairs().
+
+### My answer
+
+The scatterplot matrix is shown below.
+
+```{r}
+p1 |> 
+  dplyr::select(
+    MW,
+    HeatOfVap_kJmol,
+    FreeEnergy_kJmol
+  ) |> 
+  pairs(main = "Scatter plot matrix of 3 variables")
+```
+
+# Problem 2 [8 points]
+
+In this problem, you will fit regression models and study their losses. One of the purposes of this problem - in addition to theory - is to make you more comfortable with various machine learning workflows. Sections 5.1 and 5.3.2 (lab section) of ISLR_v2 contain helpful information for solving this problem. Tasks a-b use a synthetic data set, and Tasks c-d use a real data set:
+
+• The synthetic data are given in the CSV files train_syn, valid_syn, and test_syn (the training set, validation set, and test set respectively).
+
+• The real data are meteorological forecasts and geographic data from Cho et al. (2020)1. They are given in the CSV files train_real and test_real (the training set and test set respectively).
+
+## P2-Task a
+
+### Task a: Question
+
+In this task, you will fit polynomials $y^ = \Sigma pk=0 w k x$ to the synthetic data for several polynomial degrees $p$ by using ordinary least squares (OLS) regression. Produce the following table: Degree Train Validation Test TestTRVA CV
+
+### Task a: my answer
+
+```{r}
+# read in train set
+train <-
+  readr::read_csv(
+    file.path(here::here(), "IML", "data", "data_E1","train_syn.csv")
+    )
+# read in validation set
+valid <-
+  readr::read_csv(
+    file.path(here::here(), "IML", "data", "data_E1","valid_syn.csv")
+    )
+# read in test set
+test <-
+  readr::read_csv(
+    file.path(here::here(), "IML", "data", "data_E1","test_syn.csv")
+    )
+```
+
+```{r}
+#A function to do k fold validation and produce MSE
+k_fold_cv_mse <- function(data, k, y, myformula) {
+  # Split the data into k equally sized parts
+  set.seed(20231112)  # For reproducibility
+  folds <- cut(seq(1, nrow(data)), breaks=k, labels=FALSE)
+
+  # Store the results
+  results <- data.frame('Fold' = integer(0), 'MSE' = numeric(0))
+
+  # Perform k-fold cross-validation
+  for(i in 1:k) {
+    # Split data into training and test sets
+    test_indices <- which(folds == i, arr.ind=TRUE)
+    testData <- data[test_indices, ]
+    trainData <- data[-test_indices, ]
+    
+    # Fit the model
+    formula <- as.formula(myformula)
+    model <- glm(formula, data=trainData)
+    
+    # Make predictions and calculate MSE
+    predictions <- predict(model, testData)
+    mse <- mean((testData[[eval(parse(text = paste0("'", y,"'")))]] - predictions)^2)
+    
+    # Store the results
+    results <- rbind(results, data.frame('Fold' = i, 'MSE' = mse))
+  }
+   MSE <- mean(results$MSE)
+    return(MSE)
+}
+```
+
+```{r}
+# assign maximum polynomial degree
+max_degree <- 8
+#Create am empty table for populating the results.
+task.a.table <- 
+  data.frame(
+    Degree = 0:max_degree,
+    Train = rep(NA, max_degree+1),
+    Validation = rep(NA, max_degree+1),
+    Test = rep(NA, max_degree+1),
+    TestTRVA = rep(NA, max_degree+1),
+    CV = rep(NA, max_degree+1)
+  )
+#loop through 0 to 8 polynomial degree model, as required by the question.
+
+for (d in 0:max_degree) {
+  if (d == 0){
+  # fit model on train set, when degree = 0
+  trainset.model <- glm(y ~ 1, data = train)
+  
+  # derive the training loss (MSE), and save into the table
+  task.a.table[d+1,"Train"] <- mean((predict(trainset.model, train) - train$y)^2, na.rm = T)
+  
+  # derive the validation loss (MSE), and save into the table
+  task.a.table[d+1,"Validation"] <- mean((predict(trainset.model, valid) - valid$y)^2, na.rm = T)
+  
+  # derive the testing loss(MSE), and save into the table
+  task.a.table[d+1, "Test"] <- mean((predict(trainset.model, test) - test$y)^2, na.rm = T)
+  
+  ## Combine train and validation sets
+  train.valid <- rbind(train, valid)
+  
+  ## fit model on train+validation set
+  train.valid.model <- glm(y ~ 1, data = train.valid)
+  
+  ## derive the testing loss(MSE) of combined set, and save into the table
+  task.a.table[d+1, "TestTRVA"] <- mean((predict(train.valid.model, test) - test$y)^2, na.rm = T)
+  
+  ## call the k-fold validation function and derive mean MSE
+  
+    y = "y"
+  
+    x = "x"
+    
+   task.a.table[d+1, "CV"] <- 
+     k_fold_cv_mse(train.valid, 5, eval(parse(text = y)),  "y ~ 1")
+   
+   } else if (d > 0) {
+  # fit model on train set, when degree > 0
+  trainset.model <- glm(y ~ poly(x, d, raw = TRUE), data = train)
+  
+  # derive the training loss (MSE), and save into the table
+  task.a.table[d+1,"Train"] <- mean((predict(trainset.model, train) - train$y)^2, na.rm = T)
+  
+  # derive the validation loss (MSE), and save into the table
+  task.a.table[d+1,"Validation"] <- mean((predict(trainset.model, valid) - valid$y)^2, na.rm = T)
+  
+  # derive the testing loss(MSE), and save into the table
+  task.a.table[d+1, "Test"] <- mean((predict(trainset.model, test) - test$y)^2, na.rm = T)
+  
+  ## Combine train and validation sets
+  train.valid <- rbind(train, valid)
+  
+  ## fit model on train+validation set
+  train.valid.model <- glm(y ~ poly(x, d, raw = TRUE), data = train.valid)
+  
+  ## derive the testing loss(MSE) of combined set, and save into the table
+  task.a.table[d+1, "TestTRVA"] <- mean((predict(train.valid.model, test) - test$y)^2, na.rm = T)
+  
+  ## call the k-fold validation function and derive mean MSE
+  
+  formula <-  paste0("y ~ poly(x, ", d, ", raw = TRUE)")
+  
+  y = "y"
+  
+  x = "x"
+  
+  task.a.table[d+1, "CV"] <- 
+    k_fold_cv_mse(train.valid, 5, eval(parse(text = y)),  formula)
+  }
+  
+}
+task.a.table |> apply(2, function(x)round(x, 5)) |> 
+  kable(format = "latex",
+        booktabs = TRUE, 
+        escape = TRUE, 
+        digits = 5) |> 
+    kable_styling(full_width = TRUE)
+```
+
+I would choose polynomial order = 2. The 5 fold cross-validation set on training and validation set produced a mean MSE 0.30789, which is the tiniest MSE across results from all cross validations.
+
+## P2-Task b
+
+### Task b: Question
+
+For each value of $p \in \{0, 1, 2, 3, 4, 8\}$, produce a plot showing the points ($x_i$, $y_i$) in the training set and the fitted polynomial in the interval $[-3, 3]$.
+
+### Task b: My answer
+
+The plots required are shown below:
+
+```{r, fig.width= 8, fig.height=6}
+p <-par(mfrow=c(3,2))
+
+degree <- c(0,1,2,3,4,8)
+
+for (d in degree) {
+
+  if (d == 0){
+  # fit model on train set, when degree = 0
+  trainset.model <- glm(y ~ 1, data = train)
+   } else if (d > 0) {
+  # fit model on train set, when degree > 0
+  trainset.model <- glm(y ~ poly(x, d, raw = TRUE), data = train)
+  
+
+   }
+  # derive the training loss (MSE), and save into the table
+   predictions <- predict(trainset.model, train)
+  #plot  
+   plot(train$x, train$y, main = paste("Polynomial Degree", d),
+       xlab = "x", ylab = "y", pch = 19, col = 'blue' )
+   lines((train |> arrange(x))$x , predictions, col = 'red', lwd = 2, type = "l")
+  #  pic <- train |> 
+  #    ggplot(
+  #    aes(x = x, y = y)
+  #    ) +
+  #    geom_point() +
+  #    geom_line(aes(x = x, y = predictions)) +
+  #    labs(title = paste("Polynomial Degree", d))+
+  #    theme_bw()
+  #  #print(pic)
+  # assign(paste0("pic", which(degree == d)),  print(pic))
+
+}
+
+```
+
+## P2-Task c
+
+### Task c: Question
+
+In this task, you will fit the following regressors to the real data to predict the next day's maximum temper- ature (variable Next_Tmax):
+
+• dummy model (see the discussion below) • OLS linear regression (simple baseline)
+
+• random forest (RF)
+
+• support vector regression (SVR)
+
+• one more regression model implemented in your machine learning library not mentioned above. Produce the following table:
+
+where Train is the training loss, Test is the testing loss, and CV is the loss for 10-fold cross-validation. Using the table, answer the following:
+
+1.  Which regressor is the best? Why?
+
+2.  How does Train compare to Test? How does CV compare to Test?
+
+3.  How can you improve the performance of these regressors (on this training set)?
+
+### Task c: my answer
+
+```{r}
+#A function to do k fold validation and produce MSE
+k_fold_cv_mse_anymodel <- function(data, k, y, myfullformula) {
+  # Split the data into k equally sized parts
+  set.seed(20231112)  # For reproducibility
+  folds <- cut(seq(1, nrow(data)), breaks=k, labels=FALSE)
+
+  # Store the results
+  results <- data.frame('Fold' = integer(0), 'MSE' = numeric(0))
+
+  # Perform k-fold cross-validation
+  for(i in 1:k) {
+    # Split data into training and test sets
+    test_indices <- which(folds == i, arr.ind=TRUE)
+    testData <- data[test_indices, ]
+    trainData <- data[-test_indices, ]
+    
+    # Fit the model
+    model <- eval(parse(text = myfullformula))
+    
+    # Make predictions and calculate MSE
+    predictions <- predict(model, testData)
+    mse <- mean((testData[[eval(parse(text = paste0("'", y,"'")))]] - predictions)^2)
+    
+    # Store the results
+    results <- rbind(results, data.frame('Fold' = i, 'MSE' = mse))
+  }
+   MSE <- mean(results$MSE)
+    return(MSE)
+}
+```
+
+```{r}
+# read in real set
+real <-
+  readr::read_csv(
+    file.path(here::here(), "IML", "data", "data_E1","test_real.csv")
+    )
+```
+
+```{r}
+# create empty task c table
+task.c.table <- data.frame(Regressor = c("Dummy", "OLS", "RF", "SVR", "NN"),
+                           Train = rep(NA, 5),
+                           Test = rep(NA, 5),
+                           CV = rep(NA, 5))
+
+# libraries
+library(randomForest)
+library(e1071)
+
+##subset data into train and test
+set.seed(1112) # For reproducibility
+train.index <- sample(1:nrow(real), 0.8*nrow(real)) # 80% for training
+train.set <- real[train.index, ]
+test.set <- real[-train.index, ]
+```
+
+```{r}
+# dummy model
+model_dummy <- glm(Next_Tmax ~ 1, data = real)
+predictions.train.dummy <- predict(model_dummy, train.set)
+predictions.test.dummy <- predict(model_dummy, test.set)
+
+# Calculate losses
+task.c.table$Train[task.c.table$Regressor == "Dummy"] <- mean((train.set$Next_Tmax - predictions.train.dummy)^2)
+task.c.table$Test[task.c.table$Regressor == "Dummy"] <- mean((test.set$Next_Tmax - predictions.test.dummy)^2)
+
+# 10-f Cross-validation
+task.c.table$CV[task.c.table$Regressor == "Dummy"] <- k_fold_cv_mse(real, 10, "Next_Tmax", "Next_Tmax ~ 1")
+```
+
+```{r}
+# OLS Linear Regression
+model_ols <- glm(Next_Tmax ~ ., data = real)
+predictions.train.ols <- predict(model_ols, train.set)
+predictions.test.ols <- predict(model_ols, test.set)
+
+# Calculate losses
+task.c.table$Train[task.c.table$Regressor == "OLS"] <- mean((train.set$Next_Tmax - predictions.train.ols)^2)
+task.c.table$Test[task.c.table$Regressor == "OLS"] <- mean((test.set$Next_Tmax - predictions.test.ols)^2)
+
+# 10-f Cross-validation
+task.c.table$CV[task.c.table$Regressor == "OLS"] <- k_fold_cv_mse(real, 10, "Next_Tmax", "Next_Tmax ~ .")
+```
+
+```{r}
+# RF model
+model_RF <- randomForest(Next_Tmax ~ ., data = real)
+predictions.train.rf <- predict(model_RF, train.set)
+predictions.test.rf <- predict(model_RF, test.set)
+
+# Calculate losses
+task.c.table$Train[task.c.table$Regressor == "RF"] <- mean((train.set$Next_Tmax - predictions.train.rf)^2)
+task.c.table$Test[task.c.table$Regressor == "RF"] <- mean((test.set$Next_Tmax - predictions.test.rf)^2)
+
+# 10-f Cross-validation
+task.c.table$CV[task.c.table$Regressor == "RF"] <- 
+  k_fold_cv_mse_anymodel(real, 10, "Next_Tmax", "randomForest(Next_Tmax ~ ., data = real)")
+```
+
+```{r}
+# RF model
+model_SVR <- svm(Next_Tmax ~ ., data = real)
+predictions.train.svr <- predict(model_SVR, train.set)
+predictions.test.svr <- predict(model_SVR, test.set)
+
+# Calculate losses
+task.c.table$Train[task.c.table$Regressor == "SVR"] <- mean((train.set$Next_Tmax - predictions.train.svr)^2)
+task.c.table$Test[task.c.table$Regressor == "SVR"] <- mean((test.set$Next_Tmax - predictions.test.svr)^2)
+
+# 10-f Cross-validation
+task.c.table$CV[task.c.table$Regressor == "SVR"] <- 
+  k_fold_cv_mse_anymodel(real, 10, "Next_Tmax", "svm(Next_Tmax ~ ., data = real)")
+```
+
+I picked up Neural Network (NN) as the last model.
+
+```{r}
+library(neuralnet) 
+# NN model
+model_NN <- neuralnet(Next_Tmax ~ ., data = real)
+predictions.train.nn <- predict(model_NN, train.set)
+predictions.test.nn <- predict(model_NN, test.set)
+
+# Calculate losses
+task.c.table$Train[task.c.table$Regressor == "NN"] <- mean((train.set$Next_Tmax - predictions.train.nn)^2)
+task.c.table$Test[task.c.table$Regressor == "NN"] <- mean((test.set$Next_Tmax - predictions.train.nn)^2)
+
+# 10-f Cross-validation
+task.c.table$CV[task.c.table$Regressor == "NN"] <- 
+  k_fold_cv_mse_anymodel(real, 10, "Next_Tmax", "neuralnet(Next_Tmax ~ ., data = real)")
+```
+
+This is the final table required for the question, note that `NN` is for neural network:
+
+```{r}
+# print the table
+task.c.table |>  
+  mutate_if(is.numeric, ~round(., 3)) |> 
+  kable(format = "latex",         
+        booktabs = TRUE,          
+        escape = TRUE,          
+        digits = 5) |>      
+  kable_styling(full_width = TRUE)
+```
+
+*Which regressor is best?*
+
+RF is best, since it has lowest values in both testing loss and CV loss, measuring by MSE.
+
+*How does Train compare to Test? How does CV compare to Test?*
+
+Comparing Training loss to Testing loss, I found OLS, RF and SVR were over-fitted, due to Train \< TEST. OLS model underwent the least serious over-fitting, comparing to other two over-fitted models (accoding to the ratio of (Test-Train)/Test).
+
+Comparing Test to CV, SVR model showed relatively large discrepancy between the pair. Other models have fairly small Test and CV difference, indicating good model effectiveness. Again OLS has the smallest Test-CV difference
+
+*How can you improve the performance of these regressors (on this training set)?*
+
+Several ways that I can come up with:
+
+a.  subset selection: select meaningful (theory-driven) and significant (data-driven) variables as predictors. For exmaple, stepwise selection can be used.
+
+b.  feature engineering: in addition to subset selection, creating new variables based on the existing ones.
+
+c.  Check and remove low quality observations.
+
+*How can you improve the performance of these regressors (on this training set)?*
+
+# Problem 3 [6 points]
+
+In this problem, you will study the bias-variance decomposition in the context of model selection. Section 2.2 of ISLR_v2 will be helpful in solving this problem.
+
+## P3-Task a
+
+### Task a: Question:
+
+Describe the typical behaviour of the following terms, as we go from less flexible to more flexible statistical learning methods:
+
+• training error and testing error • (squared) bias
+
+• variance
+
+• irreducible (or Bayes) error.
+
+Explain why each term has the described behaviour.
+
+You can describe the behaviours in words or you can sketch them as curves. In the sketches the x-axis should represent the flexibility of the method, and the y-axis should represent the values for each term. There should be five curves in total so make sure to label each one.
+
+### Task a: my answer:
+
+a.  As model flexibility increases, the training error typically decreases;
+
+b.  Testing error generally decreases initially as flexibility increases, but then starts to increase after reaching a certain point. This is because beyond a certain point, increased flexibility leads to overfitting the training data, and the model fails to generalize well to new, unseen data, causing the testing error to increase.
+
+c.As the model becomes more flexible, it can better represent complex relationships, thereby bias tends to decrease as model flexibility increases.
+
+d.  More flexible models, which adapt closely to the training data, are likely to capture not only the underlying pattern but also the noise, leading to high variance.
+
+e.  Inreducible error is due to the noise in the data itself. No matter how flexible or sophisticated the model is, this component of the error cannot be reduced as it's inherent to the problem and data.
+
+## P3-Task b
+
+### Task b: Question
+
+(not copied)
+
+### Task b: my answer
+
+*(i)produce the table as required:*
+
+```{r}
+# random seed
+set.seed(1112)
+
+# number of simulations
+n_sim <- 1000
+
+# number of observations in each sim
+n_obs <- 10
+
+# numbers of polynomial degrees
+poly_degree <- c(0:6)
+
+#create the test data point
+test_data_point <- data.frame(x = 0)
+
+# create function f(x)
+f_function <- function(x){
+  2 - x + x^2
+}
+
+```
+
+```{r}
+# a loop that train polynomial functions p_hat(x) with degree of p, through 1000 simulated data points.
+table <- NULL
+result.table <- NULL
+set.seed(1112)
+for (d in poly_degree){
+  #create object: f_hat(0)
+  f_hat_0_function <- NULL
+  #create object: y0
+  y_0 <- NULL
+  #create object: f(0)
+  f_0_function <- NULL
+  #create object: poly_degree
+  poly_degree <- NULL
+  # loop through the number of planned simulation
+  for (i in 1: n_sim) { 
+    #random seed
+    #simulate a number of n_obs x for each loop
+    x <- runif(n_obs, min = -3, max = 3)
+    #simulate the actual y value using simulated x and the formula given 
+    y <- f_function(x) + rnorm(n_obs, mean = 0, sd = 0.4)
+    #fit model regressing y on x at polynomial degree d
+    ##if polynomial degree is 0
+    if (d == 0) {
+      model <- glm(y ~ 1)
+    } else {   
+    ##if polynomial degree is not 0
+    model <- glm(y ~ poly(x, d, raw = TRUE))
+    }
+    #save each simulated f(0) value into the pre-defined vector f_0_function
+    f_0_function[i] <- f_function(0)
+    #save each simulated y0 value into the pre-defined vector y_0
+    y_0[i] <- f_function(0) + rnorm(1, mean = 0, sd = 0.4)
+    #save each simulated f_hat(0) value into the pre-defined vector f_hat_0_function
+    f_hat_0_function[i] <- predict(model, test_data_point)
+    # save polynomial degree for the fit
+    #poly_degree[i] <- d
+  }
+  table <- data.frame(poly_degree = d, f_0_function, y_0, f_hat_0_function)
+  assign(paste0("table", d), table)
+  #combine the 3 vectors into a dataframe
+  result.table <- rbind(result.table, eval(parse(text = paste0("table", d))))
+}
+
+# show the table
+task.c.table <- 
+  result.table |> 
+  group_by(poly_degree) |> 
+  summarise(
+    Irreducible = mean((y_0 - f_0_function)^2, na.rm = T),
+    BiasSq = (mean(f_hat_0_function) - f_function(0))^2,
+    Variance = mean((f_hat_0_function - mean(f_hat_0_function))^2), 
+    Total = sum(Irreducible, BiasSq, Variance),
+    MSE = mean((y_0 - f_hat_0_function)^2)
+  ) |> 
+  rename(Degree = poly_degree)
+```
+
+Table required:
+
+```{r}
+task.c.table |> 
+  apply(2, function(x)round(x,5)) |> 
+  kable(format = "latex",         
+        booktabs = TRUE,          
+        escape = TRUE,          
+        digits = 5) |>      
+  kable_styling(full_width = TRUE)
+```
+
+*(ii) plot four terms as a function of poly-nomial degree*
+
+The plots are generated as below. 
+
+```{r}
+# plot four terms as a function of poly-nomial degree
+task.c.table |> 
+  select(-Total) |> #move variable not in use
+  pivot_longer( # long formatted
+    cols = c(2:5),
+    names_to = "variable",
+    values_to = "value") |> 
+  ggplot(aes(x = Degree, y = value)) + # x and y
+  geom_point() + #scatter plot
+  geom_line() + # connect points
+  geom_smooth(method = "loess")+ # fit a curve
+  facet_wrap(~variable)+ # facet
+  theme_bw() #theme
+```
+
+*(iii) are the terms as expected?*
+
+Yes. They behave as expected. More specifically,
+
+a.  Irreducible errors went as expected because their expectation should be constant across different nominal degree models. In addition to that, I saw what I expect to see-- an irreducible error roughly close to 0.42\^2 = 0.1764, and
+
+b.  Squared bias went as expected because it goes down with polynomial degree at the beginning until a point, after which it keeps consistent. This corresponds to the fact that newly-introduced polynomial degrees will not help capture more variance as soon as it has reached the proper polynomial degree.
+
+c.  I expected to see a variance that is close to the variance of predicted y value when x = 0, and I did see this.
+
+d.  MSE went as expected because it reduces with the reduce of bias and grows again with increasing variance.
+
+And the difference between Total and MSE are small. Most of them range from -0.1 to 0.1. See the plot below:
+
+```{r}
+hist(task.c.table$Total - task.c.table$MSE, breaks = 10, main = "Check the difference between Total and SqLoss", xlab = "diff between total and SqLoss", ylab = "frequency")
+```
+
+# Problem 5 [6 points]
+
+Objective: properties of estimators
+
+In this problem, we study 1-variable linear regression $y^ = w0 + w1x$ using the four data sets named d1.csv, d2.csv, d3.csv, and d4.csv.
+
+```{r}
+# Read in the data
+
+d1 <-
+  readr::read_csv(
+    file.path(here::here(), "IML", "data", "data_E1","d1.csv")
+    )
+d2 <- 
+  readr::read_csv(
+    file.path(here::here(), "IML", "data", "data_E1","d2.csv")
+    )
+
+d3 <- 
+  readr::read_csv(
+    file.path(here::here(), "IML", "data", "data_E1","d3.csv")
+    )
+
+d4 <- 
+  readr::read_csv(
+    file.path(here::here(), "IML", "data", "data_E1","d4.csv")
+    )
+```
+
+## P5-Task a
+
+### Task a: Question
+
+For each data set, fit an OLS linear regression and report:
+
+• the intercept term estimate, standard error, and p-value,
+
+• the slope term estimate, standard error, and p-value,
+
+• the R-squared value of the model.
+
+The slope term may be positive (or negative) with high confidence. Can you safely conclude that when x increases (or decreases), y tends to increase (and vice versa)?
+
+### Task a: My answer
+
+```{r}
+library(broom)
+# fit 4 models using d1 to d4 data sets
+model.table <- NULL
+for (i in 1:4) {
+  #define data set names
+  data <- paste0("d", i)
+  #define model names
+  model.name <- paste0("model", i)
+  #fit models on the data sets
+  model <- lm(y ~ x, data = eval(parse(text = data)))
+  #total Variance 
+  SStotal <- sum((model$model$y-mean(model$model$y))^2)
+  # residual variance
+  SSresidual <- sum(model$residuals^2) 
+  #assign each model a name: model1 ~ model4
+  assign(model.name, model)
+  #assign tidied model results to "model"
+  model <- tidy(model, conf.int = T)
+  #save variance explained in table
+  model[2,"Rsquared"] <- 1-SSresidual/SStotal
+   #append a column marking model number
+  model[,"model_No"] <- i
+  #merge tidied models into one table
+  model.table <- rbind(model.table, model)
+}
+```
+
+Below, I generate a table showing the intercept and slope estimates for the models, and relevant statistics. Note that numbers 1 to 4 in column `model_NO` correspond to models fitted for 4 data sets.
+
+```{r}
+model.table <- 
+  model.table |> 
+  dplyr::mutate(term = replace(term, term == "x", "slope")) 
+
+model.table|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  kable(format = "latex",         
+        booktabs = TRUE,          
+        escape = TRUE,          
+        digits = 5) |>      
+  kable_styling(full_width = TRUE)
+```
+
+<!-- *The intercept term estimate, standard error, and p-value:* -->
+
+<!-- ```{r} -->
+<!-- # the intercept term estimate, standard error, and p-value for d1 model -->
+<!-- model.table |>  -->
+<!--   dplyr::select( -->
+<!--     term, -->
+<!--     estimate, -->
+<!--     std.error, -->
+<!--     p.value, -->
+<!--     model_No -->
+<!--   )|>  -->
+<!--   filter(model_No == 1& term == "(Intercept)") |>  -->
+<!--   mutate_if(is.numeric, ~round(.,5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,          -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+
+<!-- # the intercept term estimate, standard error, and p-value for d2 model -->
+<!-- model.table |>  -->
+<!--   dplyr::select( -->
+<!--     term, -->
+<!--     estimate, -->
+<!--     std.error, -->
+<!--     p.value, -->
+<!--     model_No -->
+<!--   )|>  -->
+<!--   filter(model_No == 2, term == "(Intercept)")|>  -->
+<!--   mutate_if(is.numeric, ~round(.,5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,           -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+
+<!-- # the intercept term estimate, standard error, and p-value for d3 model -->
+<!-- model.table |>  -->
+<!--   dplyr::select( -->
+<!--     term, -->
+<!--     estimate, -->
+<!--     std.error, -->
+<!--     p.value, -->
+<!--     model_No -->
+<!--   )|>  -->
+<!--   filter(model_No == 3, term == "(Intercept)")|>  -->
+<!--   mutate_if(is.numeric, ~round(.,5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,           -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+
+<!-- # the intercept term estimate, standard error, and p-value for d4 model -->
+<!-- model.table |>  -->
+<!--   dplyr::select( -->
+<!--     term, -->
+<!--     estimate, -->
+<!--     std.error, -->
+<!--     p.value, -->
+<!--     model_No -->
+<!--   )|>  -->
+<!--   filter(model_No == 4, term == "(Intercept)")|>  -->
+<!--   mutate_if(is.numeric, ~round(.,5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,           -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+<!-- ``` -->
+
+<!-- *The slope term estimate, standard error, and p-value:* -->
+
+<!-- ```{r} -->
+<!-- # the slope term estimate, standard error, and p-value for d1 model -->
+<!-- model.table |>  -->
+<!--   dplyr::select( -->
+<!--     term, -->
+<!--     estimate, -->
+<!--     std.error, -->
+<!--     p.value, -->
+<!--     model_No -->
+<!--   )|>  -->
+<!--   filter(model_No == 1& term == "slope")|>  -->
+<!--   mutate_if(is.numeric, ~round(.,5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,           -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+
+<!-- # the slope term estimate, standard error, and p-value for d2 model -->
+<!-- model.table |>  -->
+<!--   dplyr::select( -->
+<!--     term, -->
+<!--     estimate, -->
+<!--     std.error, -->
+<!--     p.value, -->
+<!--     model_No -->
+<!--   )|>  -->
+<!--   filter(model_No == 2, term == "slope")|>  -->
+<!--   mutate_if(is.numeric, ~round(.,5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,           -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+
+<!-- # the slope term estimate, standard error, and p-value for d3 model -->
+<!-- model.table |>  -->
+<!--   dplyr::select( -->
+<!--     term, -->
+<!--     estimate, -->
+<!--     std.error, -->
+<!--     p.value, -->
+<!--     model_No -->
+<!--   )|>  -->
+<!--   filter(model_No == 3, term == "slope")|>  -->
+<!--   mutate_if(is.numeric, ~round(.,5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,           -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+
+<!-- # the slope term estimate, standard error, and p-value for d4 model -->
+<!-- model.table |>  -->
+<!--   dplyr::select( -->
+<!--     term, -->
+<!--     estimate, -->
+<!--     std.error, -->
+<!--     p.value, -->
+<!--     model_No -->
+<!--   )|>  -->
+<!--   filter(model_No == 4, term == "slope")|>  -->
+<!--   mutate_if(is.numeric, ~round(.,5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,           -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+<!-- ``` -->
+
+<!-- *the R-squared value of the model:* -->
+
+<!-- ```{r} -->
+<!-- model.table |>  -->
+<!--   select(model_No, Rsquared) |>  -->
+<!--   filter(!is.na(Rsquared)) |>  -->
+<!--   apply(2, function(x)round(x, 5)) |>  -->
+<!--   kable(format = "latex",          -->
+<!--         booktabs = TRUE,           -->
+<!--         escape = TRUE,           -->
+<!--         digits = 5) |>       -->
+<!--   kable_styling(full_width = TRUE) -->
+<!-- ``` -->
+
+*Can you safely conclude that when x increases (or decreases), y tends to increase (and vice versa)*
+
+Since the coefficient estimates for the slope of all models are positive and the lower end of 95% CI are above 0, I am confident that when the predictors x increases, the responses y tend to increase.
+
+```{r}
+model.table |> 
+  dplyr::select(term, estimate, conf.low, conf.high, model_No) |> 
+  filter(term == "slope")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  kable(format = "latex",         
+        booktabs = TRUE,          
+        escape = TRUE,          
+        digits = 5) |>      
+  kable_styling(full_width = TRUE)
+```
+
+## P5-Task b
+
+### Task b: Question
+
+Make a plot of each data set showing a scatterplot of x vs y along with the fitted regression line. What commonalities do you notice between the data sets and their fitted models?
+
+### Task b: my answer
+
+The plot as required:
+
+```{r}
+par(mfrow = c(2,2))
+plot(d1$x, d1$y, col = "red", main = "Scatterplot of x and y in d1")
+abline(model1, col = "blue")
+
+plot(d2$x, d2$y, col = "red", main = "Scatterplot of x and y in d2")
+abline(model2, col = "blue")
+
+plot(d3$x, d3$y, col = "red", main = "Scatterplot of x and y in d3")
+abline(model3, col = "blue")
+
+plot(d4$x, d4$y, col = "red", main = "Scatterplot of x and y in d4")
+abline(model4, lwd =1, col = "blue")
+```
+
+*commonalities I noticed is:*
+
+Even though the points are distributed distinctly across the plots, the fitted lines are roughly the same.
+
+## P5-Task c
+
+### Task c: Question
+
+Sect. 3.3.3 of ISLR_v2 lists six potential problems with linear regression models. Which of the six problems would (potentially) apply to each dataset? What tricks and plots did you use to detect and diagnose the problems? Produce at least one diagnostic plot that shows these problems (other than just plotting x vs y, which you can do here because the data is 1-dimensional and which would not work for higher-dimensional data sets).
+
+### Task c: My answer
+
+We considered 4 of the 6 assumptions below:
+
+1.  Non-linearity of the response-predictor relationships.
+2.  Correlation of error terms (`not considered since it usually plagues time series data`).
+3.  Non-constant variance of error terms.
+4.  Outliers.
+5.  High-leverage points.
+6.  Collinearity. (`not considered since it involves multiple x`).
+
+X and y in data 2 and data 4 do not show sufficient linearity in their relationship. And their variance do not appear to be constant. See plots below.
+
+```{r}
+d1.linearity.check <- 
+  data.frame(fitted.values = predict(model1), residuals =model1$residuals, data = "data1")
+
+d2.linearity.check <- 
+  data.frame(fitted.values = predict(model2), residuals =model2$residuals, data = "data2")
+
+d3.linearity.check <-
+  data.frame(fitted.values = predict(model3), residuals =model3$residuals, data = "data3")
+
+d4.linearity.check <- 
+  data.frame(fitted.values = predict(model4), residuals =model4$residuals, data = "data4")
+
+linearity.check <- rbind(d1.linearity.check, d2.linearity.check, d3.linearity.check, d4.linearity.check)
+
+
+linearity.check |> 
+  ggplot(aes(x = fitted.values, y = residuals)) +
+  geom_point(color = "black") +
+  geom_smooth(method = "loess", color = "red")+
+  facet_wrap(~data, scales = "free") +
+  theme_bw()
+```
+
+In the table below, for each row except for the first, an x is removed from a dataset each time,  refitted, and the MSE change from initial MSE (all x reserved model) is calcuated. Outliers that have large influence on the loss will be detected. I found data 3 suffers from an outlier. Removal of x in row 3 resulted in 99.99% MSE change.
+
+```{r}
+#This function remove an x from a dataset each time,  refit the model, and 
+#calculate the MSE change from initial MSE (all x reserved model). Outliers
+# that have large influence on the loss will be detected. 
+
+outlier.table <- NULL
+test.outlier <- function(data, y, x){
+  #create an empty table
+  outlier.table <- data.frame(
+    "Rmoved row number" = NA, "x removed"= NA, "y removed"= NA,"MSE"= NA, "MSE change" = NA
+    )
+  #create id variable
+  data$id <- 1:nrow(data)
+  #fit the model for inital data
+  model.initial <- lm(y ~ x, data = data)
+  #derive the MSE
+  model.initial.mse <- mean(model.initial$residuals^2)
+  #save a series of values to the first row (intial model)
+  outlier.table[1,1] <- "no x removed (initial)"
+  outlier.table[1,2] <- NA
+  outlier.table[1,3] <- NA
+  outlier.table[1,4] <- model.initial.mse
+  outlier.table[1,5] <- 0
+  # loop once for each row
+  for (i in 1:nrow(data)){
+    #remove one row each time
+    data.removed <- data |> filter(id != i)
+    #re-fitted the n-1 model
+    model <- lm(y ~ x, data = data.removed)
+    #ave a series of values 
+    outlier.table[i+1, 1] <- paste0("row ", i)
+    outlier.table[i+1, 2] <- data[which(data$id == i), "x"]
+    outlier.table[i+1, 3] <- data[which(data$id == i), "y"]
+    outlier.table[i+1, 4] <- mean(model$residuals^2)
+    outlier.table[i+1,5] <- 1-mean(model$residuals^2)/model.initial.mse
+  }
+  #print the results
+  outlier.table
+}
+```
+
+```{r}
+a <- test.outlier(d3, y, x) 
+a |> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  kable(format = "latex",         
+        booktabs = TRUE,          
+        escape = TRUE,          
+        digits = 5) |>      
+  kable_styling(full_width = TRUE)
+```
+
+Besides, the leverage vs studentized residual plot below also shows there is an out-lier with medium level of leverage data point in data 3 model. See below:
+
+```{r}
+#install.packages('plotrix')
+library(plotrix)
+#leverage and studentized residual for model3
+studentized.residual3 <- rstudent(model3)
+leverage3 <-hatvalues(model3)
+#plot leverage versus studentized residuals
+plot(studentized.residual3 ~leverage3, main = "Leverge vs residual plot for data 3 model")
+draw.circle(x=0.236, y=1200, radius=0.005, border = "red")
+```
+
+Below I plotted leverage statistics versus index, with a red dotted line showing the reference average value given in p99, ISLR_v2.($$\frac{(p+1)}{n}$$)
+
+The finding is for d4 model, observation 8 has massive leverage that could distort the regression coefficient.
+
+```{r}
+#leverage and studentized residual for model4 (d4 data)
+studentized.residual4 <- rstudent(model4)
+leverage4 <-hatvalues(model4)
+#leverage and studentized residual for model2 (d2 data)
+studentized.residual2 <- rstudent(model2)
+leverage2 <-hatvalues(model2)
+#leverage and studentized residual for model1 (d1 data)
+studentized.residual1 <- rstudent(model1)
+leverage1 <-hatvalues(model1)
+
+par(mfrow = c(2,2))
+
+plot(leverage1, type = "h", col = "blue", main = "d1 model leverage")
+abline(h = (1+1)/nrow(d1), col = "red", lty = 2)
+plot(leverage2, type = "h", col = "blue", main = "d2 model leverage")
+abline(h = (1+1)/nrow(d2), col = "red", lty = 2)
+plot(leverage3, type = "h", col = "blue", main = "d2 model leverage")
+abline(h = (1+1)/nrow(d3), col = "red", lty = 2)
+plot(leverage4, type = "h", col = "blue", main = "d4 model leverage")
+abline(h = (1+1)/nrow(d4), col = "red", lty = 2)
+```
+
+# Problem 6 [6 points]
+
+Objective: properties of estimators and Bootstrap [Ch 3 & 5.2]
+
+## P6-Task a
+
+### Task a: Question
+
+Compute the standard errors for the regression coeﬀicient estimates for the data set d2.csv of the previous problem using bootstrap. Compare the bootstrap standard errors to the ones you got in Task A of the previous problem; which of the estimates is more trustworthy and why?
+
+### Task a: My answer
+
+```{r}
+set.seed(1112) # I did the task this day
+bootstrap_se <- function(data, n_bootstrap) {
+  n <- nrow(data)
+  coefs <- as.vector(NA)
+
+  for (i in 1:n_bootstrap) {
+    sample_indices <- sample(1:n, size = n, replace = TRUE)
+    bootstrap_sample <- data[sample_indices, ]
+    model <- lm(y ~ x, data = bootstrap_sample)
+    coefs[i] <- coef(model)[[2]]
+  }
+
+  return(sd(coefs))
+}
+se <- bootstrap_se(d2, 1000)
+```
+
+The standard errors for regression coeﬀicient estimates for the data set d2 is `r se`.
+
+```{r}
+get.previous.se <- 
+  model.table |> 
+  dplyr::select(
+    model_No,
+    term,
+    std.error,
+  )|> 
+  filter(model_No == 2, term == "slope")
+```
+
+The previous exercise derived std.error for slope as `r get.previous.se[, "std.error"]`.
+
+Comparing with each other, I found the SE from bootstrap is much larger than SE from conventional computation. Conventional SE computation are based on the assumptions of normality and homoscedasticity of residuals. However, I already discussed in task c of previous question that data 2 violates these assumptions. In such case, bootstrapping method, which does not assume normality and homoscedasticity, should work better and more trustworthy.
+
+## P6-Task b
+
+### Task b: Question
+
+Describe briefly in your own words how the bootstrap algorithm computes the standard errors for the intercept and slope parameters in the task above.
+
+### Task b: my answer
+
+The standard error is the standard deviation of a sample population. It measures the accuracy with which a sample represents a population. Conventional method uses sample statistics to approximate population parameter and computes SE. To extrapolate population from a sample, some data distribution is often assumed, or else it will not work nicely. 
+
+In task a, instead, I calculated SE for regression coefficient in a bootstrapping way: I re-sampled n observations with replacement from d2 data for 1000 times. The resulting 1000 sample were fitted using linear regression, respectively. This gave me 1000 'population' of regression coefficients. Computing the Standard Deviation for them and I got the SE, according to definition of SE described above.
+
+## P6-Task c:
+
+### Task c: Question
+
+In bootstrap, you sample n data points from a population of n points with replacement. Argue that the probability that the $j_{th}$ observation is not in the bootstrap sample is about 0.368 when n is very large.
+
+### Task c: my answer
+
+Since replacement is allowed,
+
+$$
+P(\text{not picked in any draw}) = \left(1 - \frac{1}{n}\right)^n
+$$ 
+
+Then,
+
+$$
+\\lim_{n \to \infty} \left(1 - \frac{1}{n}\right)^n = \frac{1}{\lim_{n \to \infty} \left(1 + \frac{1}{n}\right)^n} = \frac{1}{e} 
+$$
+
+So we have:
+
+$$
+\frac{1}{e} \approx \frac{1}{2.71828} \approx 0.3678
+$$
+
+# Problem 7 [2 points]
+
+## P7-Task a
+
+### Task a: Questions
+
+Write a learning diary of the topics of lectures 1-4 and this exercise set.
+
+What did I learn? What did I not understand? Was there something relevant for other studies or (future) work? The length of your reply should be 1-3 paragraphs of text. You can also give feedback on the course.
+
+### Task a: My answer
+
+I am from the disciplines of medicine and educational science. I used to use most of the techniques in chapter 1-4 in my studies, by following how the analyses were done in publications, without realizing they are rooted in the power of machine learning. Thanks to these sessions, I finally systematically learnt them and got my mind much better organzied.
+
+I used to be confused about training, validation and testing data sets, but now I see how they relate to each other in a more structured way.
+
+I used to select predictors in a model using step-wise method. Now I get a bigger picture that it belongs to subset selection and there are some competing techniques. And I see the reason why it was developed: for the sake of efficiency.
+
+I used to determine the polynomial degree of my model by observing the lowess curve with my bare eyes, but now I get a more powerful data-driven approach: polynomial degree comparison and selection with loss function.
+
+Gladly that this course is not that mathematically heavy, at least until now, or else I might not be able to follow. But still, in the sessions I found some math blind spots (such as optimization) and I will make them up by joining more basic level courses, after this course.
+
+## P7-Task b
+
+### Task b: Question
+
+Give an estimate of the hours used in solving the problems in this exercise set.
+
+### Task b: My answer
+
+I used a day from 10:00 to 17:00 getting 4 questions done. I used another 3\~4 hours of another day to get the remaining done. (I haven't done question 4 yet; I might quit it). In all, I spent \~10 hours solving the problems.
