@@ -1018,6 +1018,8 @@ draw.circle(x=0.236, y=1200, radius=0.005, border = "red")
 
 Below I plotted leverage statistics versus index, with a red dotted line showing the reference average value given in p99, ISLR_v2.($$\frac{(p+1)}{n}$$)  
 
+The finding is for d4 model, observation 8 has massive leverage that could distort the regression coefficient.
+
 ```{r}
 #leverage and studentized residual for model4 (d4 data)
 studentized.residual4 <- rstudent(model4)
