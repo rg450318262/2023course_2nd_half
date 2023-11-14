@@ -1033,13 +1033,13 @@ leverage1 <-hatvalues(model1)
 
 par(mfrow = c(2,2))
 
-plot(leverage1, type = "h", col = "blue")
+plot(leverage1, type = "h", col = "blue", main = "d1 model leverage")
 abline(h = (1+1)/nrow(d1), col = "red", lty = 2)
-plot(leverage2, type = "h")
+plot(leverage2, type = "h", col = "blue", main = "d2 model leverage")
 abline(h = (1+1)/nrow(d2), col = "red", lty = 2)
-plot(leverage3, type = "h")
+plot(leverage3, type = "h", col = "blue", main = "d2 model leverage")
 abline(h = (1+1)/nrow(d3), col = "red", lty = 2)
-plot(leverage4, type = "h")
+plot(leverage4, type = "h", col = "blue", main = "d4 model leverage")
 abline(h = (1+1)/nrow(d4), col = "red", lty = 2)
 ```
 
