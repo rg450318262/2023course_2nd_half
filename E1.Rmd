@@ -967,7 +967,7 @@ outlier.table <- NULL
 test.outlier <- function(data, y, x){
   #create an empty table
   outlier.table <- data.frame(
-    "Description" = NA, "x removed"= NA, "y removed"= NA,"MSE"= NA, "MSE reduction" = NA
+    "Description" = NA, "x removed"= NA, "y removed"= NA,"MSE"= NA, "MSE change" = NA
     )
   #create id variable
   data$id <- 1:nrow(data)
