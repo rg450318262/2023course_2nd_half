@@ -1016,7 +1016,7 @@ plot(studentized.residual3 ~leverage3, main = "Leverge vs residual plot for data
 draw.circle(x=0.236, y=1200, radius=0.005, border = "red")
 ```
 
-
+Below I plotted leverage statistics versus index, with a red dotted line showing the reference average value given in p99, ISLR_v2.($$\frac{(p+1)}{n}$$)  
 
 ```{r}
 #leverage and studentized residual for model4 (d4 data)
@@ -1031,10 +1031,14 @@ leverage1 <-hatvalues(model1)
 
 par(mfrow = c(2,2))
 
-plot(leverage1, type = "h")
+plot(leverage1, type = "h", col = "blue")
+abline(h = (1+1)/nrow(d1), col = "red", lty = 2)
 plot(leverage2, type = "h")
+abline(h = (1+1)/nrow(d2), col = "red", lty = 2)
 plot(leverage3, type = "h")
+abline(h = (1+1)/nrow(d3), col = "red", lty = 2)
 plot(leverage4, type = "h")
+abline(h = (1+1)/nrow(d4), col = "red", lty = 2)
 ```
 
 
