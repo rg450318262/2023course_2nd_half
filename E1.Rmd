@@ -26,6 +26,8 @@ Drop the columns ["id", "SMILES", "InChlKey"].
 
 ### Task a: My answer
 
+For reading convenience, I collapsed the chunks. Please unfold the chunk to check the codes, whenever needed.
+
 ```{r}
 library(here)
 library(tidyverse)
@@ -52,7 +54,7 @@ Select the columns ["pSat_Pa","NumOfConf","ChemPot_kJmol"] from the data frame a
 ### My answer
 
 ```{r}
-p1 |> 
+summary <- p1 |> 
   dplyr::select(
     pSat_Pa,
     NumOfConf,
@@ -60,6 +62,8 @@ p1 |>
   ) |> 
   summary()
 ```
+
+This summary, after removing the three columns, is `r summary`.
 
 ## P1-Task c
 
@@ -70,16 +74,18 @@ Extract the data in the column ChemPot_kJmol of the data frame to an array. Calc
 ### Task c: My answer
 
 ```{r}
-#etract a column into an array
+#extract a column into an array
 myarray <- 
   p1$ChemPot_kJmol |> 
   array() 
 
 #mean of the column
-myarray |> mean(na.rm = T)
+mean <- myarray |> mean(na.rm = T)
 #sd of the column
-myarray |> sd(na.rm = T)
+sd <- myarray |> sd(na.rm = T)
 ```
+
+Mean is `r mean`, standard deviation is `r sd`.
 
 ## P1-Task d
 
@@ -95,9 +101,11 @@ Tip: In Python, you can use hist() and boxplot() in the matplotlib package. In R
 
 ### P1-Task d: My answer
 
+The boxplot and histogram are shown below.
+
 ```{r}
 par(mfrow=c(1,2))
-
+# the histogram is:
 p1$pSat_Pa |> 
   log10() |> 
   hist(
@@ -105,7 +113,7 @@ p1$pSat_Pa |>
     ylab = "Frequency", 
     main = "Histogram of pSat_Pa \n(in base log10 units)"
     )
-
+# the boxplot is:
 p1$NumOfConf |> 
   boxplot(
     xlab = "NumOfConf", 
@@ -121,6 +129,8 @@ p1$NumOfConf |>
 Produce a scatterplot matrix of the variables ["MW", "HeatOfVap_kJmol", "FreeEnergy_kJmol"]. Tip: In Python you can use seaborn.pairplot(). In R, you can use pairs().
 
 ### My answer
+
+The scatterplot matrix is shown below.
 
 ```{r}
 p1 |> 
@@ -148,6 +158,8 @@ In this task, you will fit polynomials $𝑦̂ = ∑𝑝𝑘=0 𝑤𝑘𝑥$ to 
 
 ### Task a: my answer
 
+In this chunk, I read the data:
+
 ```{r}
 # read in train set
 train <-
@@ -165,6 +177,8 @@ test <-
     file.path(here::here(), "IML", "data", "data_E1","test_syn.csv")
     )
 ```
+
+In this chunk, I made a function to do k fold validation using MSE as loss function:
 
 ```{r}
 #A function to do k fold validation and produce MSE
@@ -198,6 +212,8 @@ k_fold_cv_mse <- function(data, k, y, myformula) {
     return(MSE)
 }
 ```
+
+In this chunk, I use the function created above and generated the table as required by the question.
 
 ```{r}
 # assign maximum polynomial degree
@@ -292,7 +308,11 @@ I would choose polynomial order = 2. The 5 fold cross-validation set on training
 
 For each value of 𝑝 ∈ {0, 1, 2, 3, 4, 8}, produce a plot showing the points (𝑥𝑖, 𝑦𝑖) in the training set and the fitted polynomial in the interval [−3, 3].
 
-```{r, fig.width= 5, fig.height=6}
+### Task b: My answer
+
+The plots required are shown below:
+
+```{r, fig.width= 8, fig.height=6}
 p <-par(mfrow=c(3,2))
 
 degree <- c(0,1,2,3,4,8)
@@ -353,6 +373,8 @@ where Train is the training loss, Test is the testing loss, and CV is the loss f
 
 ### Task c: my answer
 
+A function has been made in the chunk to do k fold validation:
+
 ```{r}
 #A function to do k fold validation and produce MSE
 k_fold_cv_mse_anymodel <- function(data, k, y, myfullformula) {
@@ -385,6 +407,8 @@ k_fold_cv_mse_anymodel <- function(data, k, y, myfullformula) {
 }
 ```
 
+In the chunk, I read in data `test_real.csv`:
+
 ```{r}
 # read in real set
 real <-
@@ -392,6 +416,8 @@ real <-
     file.path(here::here(), "IML", "data", "data_E1","test_real.csv")
     )
 ```
+
+In the chunk, I subset data into train and test
 
 ```{r}
 # create empty task c table
@@ -497,6 +523,8 @@ task.c.table$CV[task.c.table$Regressor == "NN"] <-
   k_fold_cv_mse_anymodel(real, 10, "Next_Tmax", "neuralnet(Next_Tmax ~ ., data = real)")
 ```
 
+This is the final table required for the question, note that `NN` is for neural network:
+
 ```{r}
 # print the table
 task.c.table |>  
@@ -566,7 +594,9 @@ e.  Inreducible error is due to the noise in the data itself. No matter how flex
 
 ### Task b: my answer
 
-_(i)produce the table as required:_
+*(i)produce the table as required:*
+
+This chunk assigns the predefined values to objects:
 
 ```{r}
 # random seed
@@ -581,7 +611,7 @@ n_obs <- 10
 # numbers of polynomial degrees
 poly_degree <- c(0:6)
 
-#ncreate the test data point
+#create the test data point
 test_data_point <- data.frame(x = 0)
 
 # create function f(x)
@@ -590,6 +620,8 @@ f_function <- function(x){
 }
 
 ```
+
+In this chunk, I run a loop that train polynomial functions p_hat(x) with degree of p, through 1000 simulated data points:
 
 ```{r}
 # a loop that train polynomial functions p_hat(x) with degree of p, through 1000 simulated data points.
@@ -647,13 +679,19 @@ task.c.table <-
     MSE = mean((y_0 - f_hat_0_function)^2)
   ) |> 
   rename(Degree = poly_degree)
+```
 
+Table required:
+
+```{r}
 task.c.table |> 
   apply(2, function(x)round(x,5)) |> 
   DT::datatable()
 ```
 
-_(ii)lot four terms as a function of poly- nomial degree_
+*(ii) plot four terms as a function of poly-nomial degree*
+
+In the chunk, the plots are generated. 
 
 ```{r}
 # plot four terms as a function of poly-nomial degree
@@ -671,21 +709,19 @@ task.c.table |>
   theme_bw() #theme
 ```
 
-_(iii) are the terms as expected?_
+*(iii) are the terms as expected?*
 
 Yes. They behave as expected. More specifically,
 
-   a. Irreducible errors went as expected because their expectation should be constant across different nominal degree models. In addition to that, I saw what I expect to see-- an irreducible error roughly close to 0.42^2 = 0.1764, and 
-   
-   b. Squared bias went as expected because it goes down with polynomial degree at the beginning until a point, after which it keeps consistent. This corresponds to the fact that newly-introduced polynomial degrees will not help capture more variance
-      as soon as it has reached the proper polynomial degree.
-  
-  c. I expected to see a variance that is close to the variance of predicted y value when x = 0, and I did see this. 
-  
-  d. MSE went as expected because it reduces with the reduce of bias and grows again with increasing variance. 
+a.  Irreducible errors went as expected because their expectation should be constant across different nominal degree models. In addition to that, I saw what I expect to see-- an irreducible error roughly close to 0.42\^2 = 0.1764, and
 
-And the difference between Total and MSE are small. Most of them range from -0.1 to 0.1. 
-    
+b.  Squared bias went as expected because it goes down with polynomial degree at the beginning until a point, after which it keeps consistent. This corresponds to the fact that newly-introduced polynomial degrees will not help capture more variance as soon as it has reached the proper polynomial degree.
+
+c.  I expected to see a variance that is close to the variance of predicted y value when x = 0, and I did see this.
+
+d.  MSE went as expected because it reduces with the reduce of bias and grows again with increasing variance.
+
+And the difference between Total and MSE are small. Most of them range from -0.1 to 0.1. See the plot below:
 
 ```{r}
 hist(task.c.table$Total - task.c.table$MSE, breaks = 10, main = "Check the difference between Total and SqLoss", xlab = "diff between total and SqLoss", ylab = "frequency")
@@ -696,6 +732,8 @@ hist(task.c.table$Total - task.c.table$MSE, breaks = 10, main = "Check the diffe
 Objective: properties of estimators
 
 In this problem, we study 1-variable linear regression 𝑦̂ = 𝑤0 + 𝑤1𝑥 using the four data sets named d1.csv, d2.csv, d3.csv, and d4.csv.
+
+I read in the data d1, d2, d3 and d4:
 
 ```{r}
 # Read in the data
@@ -720,14 +758,13 @@ d4 <-
     )
 ```
 
-
 ## P5-Task a
 
 ### Task a: Question
 
 For each data set, fit an OLS linear regression and report:
 
-• the intercept term estimate, standard error, and p-value, 
+• the intercept term estimate, standard error, and p-value,
 
 • the slope term estimate, standard error, and p-value,
 
@@ -736,6 +773,8 @@ For each data set, fit an OLS linear regression and report:
 The slope term may be positive (or negative) with high confidence. Can you safely conclude that when x increases (or decreases), y tends to increase (and vice versa)?
 
 ### Task a: My answer
+
+In the chunk below, I fit 4 models for d1 to d4 data sets:
 
 ```{r}
 library(broom)
@@ -763,16 +802,23 @@ for (i in 1:4) {
   #merge tidied models into one table
   model.table <- rbind(model.table, model)
 }
-model.table <- 
-  model.table |> 
-  mutate(term = replace(term, term == "x", "slope"))
-model.table
 ```
 
-_The intercept term estimate, standard error, and p-value:_
+In the chunk below, I generate a table showing the intercept and slope estimates for the models, and relevant statistics. Note that numbers 1 to 4 in column `model_NO` correspond to models fitted for 4 data sets.
 
 ```{r}
+model.table <- 
+  model.table |> 
+  dplyr::mutate(term = replace(term, term == "x", "slope")) 
 
+model.table|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
+```
+
+*The intercept term estimate, standard error, and p-value:*
+
+```{r}
 # the intercept term estimate, standard error, and p-value for d1 model
 model.table |> 
   dplyr::select(
@@ -782,7 +828,9 @@ model.table |>
     p.value,
     model_No
   )|> 
-  filter(model_No == 1& term == "(Intercept)")
+  filter(model_No == 1& term == "(Intercept)") |> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 
 # the intercept term estimate, standard error, and p-value for d2 model
 model.table |> 
@@ -793,7 +841,9 @@ model.table |>
     p.value,
     model_No
   )|> 
-  filter(model_No == 2, term == "(Intercept)")
+  filter(model_No == 2, term == "(Intercept)")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 
 # the intercept term estimate, standard error, and p-value for d3 model
 model.table |> 
@@ -804,7 +854,9 @@ model.table |>
     p.value,
     model_No
   )|> 
-  filter(model_No == 3, term == "(Intercept)")
+  filter(model_No == 3, term == "(Intercept)")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 
 # the intercept term estimate, standard error, and p-value for d4 model
 model.table |> 
@@ -815,10 +867,12 @@ model.table |>
     p.value,
     model_No
   )|> 
-  filter(model_No == 4, term == "(Intercept)")
+  filter(model_No == 4, term == "(Intercept)")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 ```
 
-_The slope term estimate, standard error, and p-value:_
+*The slope term estimate, standard error, and p-value:*
 
 ```{r}
 # the slope term estimate, standard error, and p-value for d1 model
@@ -830,7 +884,9 @@ model.table |>
     p.value,
     model_No
   )|> 
-  filter(model_No == 1& term == "slope")
+  filter(model_No == 1& term == "slope")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 
 # the slope term estimate, standard error, and p-value for d2 model
 model.table |> 
@@ -841,7 +897,9 @@ model.table |>
     p.value,
     model_No
   )|> 
-  filter(model_No == 2, term == "slope")
+  filter(model_No == 2, term == "slope")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 
 # the slope term estimate, standard error, and p-value for d3 model
 model.table |> 
@@ -852,7 +910,9 @@ model.table |>
     p.value,
     model_No
   )|> 
-  filter(model_No == 3, term == "slope")
+  filter(model_No == 3, term == "slope")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 
 # the slope term estimate, standard error, and p-value for d4 model
 model.table |> 
@@ -863,9 +923,12 @@ model.table |>
     p.value,
     model_No
   )|> 
-  filter(model_No == 4, term == "slope")
+  filter(model_No == 4, term == "slope")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 ```
-_the R-squared value of the model:_
+
+*the R-squared value of the model:*
 
 ```{r}
 model.table |> 
@@ -875,14 +938,16 @@ model.table |>
   DT::datatable()
 ```
 
-_Can you safely conclude that when x increases (or decreases), y tends to increase (and vice versa)_
+*Can you safely conclude that when x increases (or decreases), y tends to increase (and vice versa)*
 
-Since the coefficient estimates for the slope of all models are positive and the lower end of 95% CI are above 0, I am confident that when the predictors x increases, the responses y tend to increase. 
+Since the coefficient estimates for the slope of all models are positive and the lower end of 95% CI are above 0, I am confident that when the predictors x increases, the responses y tend to increase.
 
 ```{r}
 model.table |> 
   dplyr::select(term, estimate, conf.low, conf.high, model_No) |> 
-  filter(term == "slope")
+  filter(term == "slope")|> 
+  mutate_if(is.numeric, ~round(.,5)) |> 
+  DT::datatable()
 ```
 
 ## P5-Task b
@@ -892,6 +957,8 @@ model.table |>
 Make a plot of each data set showing a scatterplot of x vs y along with the fitted regression line. What commonalities do you notice between the data sets and their fitted models?
 
 ### Task b: my answer
+
+The plot as required:
 
 ```{r}
 par(mfrow = c(2,2))
@@ -908,9 +975,9 @@ plot(d4$x, d4$y, col = "red", main = "Scatterplot of x and y in d4")
 abline(model4, lwd =1, col = "blue")
 ```
 
-_commonalities I noticed is:_
+*commonalities I noticed is:*
 
-Even though the points are distributed distinctly across the plots, the fitted lines are roughly the same. 
+Even though the points are distributed distinctly across the plots, the fitted lines are roughly the same.
 
 ## P5-Task c
 
@@ -920,17 +987,16 @@ Sect. 3.3.3 of ISLR_v2 lists six potential problems with linear regression model
 
 ### Task c: My answer
 
+We considered 4 of the 6 assumptions below:
 
-We considered 4 of the 6 assumptions belows. 
+1.  Non-linearity of the response-predictor relationships.
+2.  Correlation of error terms (`not considered since it usually plagues time series data`).
+3.  Non-constant variance of error terms.
+4.  Outliers.
+5.  High-leverage points.
+6.  Collinearity. (`not considered since it involves multiple x`).
 
-1. Non-linearity of the response-predictor relationships. 
-2. Correlation of error terms (`not considered since it usually plagues time series data`).
-3. Non-constant variance of error terms.
-4. Outliers.
-5. High-leverage points.
-6. Collinearity. (`not considered since it involves multiple x`).
-
-X and y in data 2 and data 4 do not show sufficient linearity in their relationship. And their variance do not appear to be constant. See plots below. 
+X and y in data 2 and data 4 do not show sufficient linearity in their relationship. And their variance do not appear to be constant. See plots below.
 
 ```{r}
 d1.linearity.check <- 
@@ -952,11 +1018,11 @@ linearity.check |>
   ggplot(aes(x = fitted.values, y = residuals)) +
   geom_point(color = "black") +
   geom_smooth(method = "loess", color = "red")+
-  facet_wrap(~data) +
+  facet_wrap(~data, scales = "free") +
   theme_bw()
 ```
 
-Data 3 suffers an outlier, see the table below. Removal of x in row 3 resulted in 99.99% MSE change. 
+This function created in the chunk removes an x from a dataset each time,  refit the model, and calculate the MSE change from initial MSE (all x reserved model). Outliers that have large influence on the loss will be detected. 
 
 ```{r}
 #This function remove an x from a dataset each time,  refit the model, and 
@@ -997,11 +1063,17 @@ test.outlier <- function(data, y, x){
   #print the results
   print(outlier.table)
 }
+```
 
+Show the table:
+
+```{r}
 test.outlier(d3, y, x) |> 
   mutate_if(is.numeric, ~round(.,5)) |> 
   DT::datatable()
 ```
+
+From the table above, I found data 3 suffers from an outlier. Removal of x in row 3 resulted in 99.99% MSE change.
 
 Besides, the leverage vs studentized residual plot below also shows there is an out-lier with medium level of leverage data point in data 3 model.
 
@@ -1016,7 +1088,7 @@ plot(studentized.residual3 ~leverage3, main = "Leverge vs residual plot for data
 draw.circle(x=0.236, y=1200, radius=0.005, border = "red")
 ```
 
-Below I plotted leverage statistics versus index, with a red dotted line showing the reference average value given in p99, ISLR_v2.($$\frac{(p+1)}{n}$$)  
+Below I plotted leverage statistics versus index, with a red dotted line showing the reference average value given in p99, ISLR_v2.($$\frac{(p+1)}{n}$$)
 
 The finding is for d4 model, observation 8 has massive leverage that could distort the regression coefficient.
 
@@ -1043,7 +1115,6 @@ plot(leverage4, type = "h", col = "blue", main = "d4 model leverage")
 abline(h = (1+1)/nrow(d4), col = "red", lty = 2)
 ```
 
-
 # Problem 6 [6 points]
 
 Objective: properties of estimators and Bootstrap [Ch 3 & 5.2]
@@ -1056,10 +1127,10 @@ Compute the standard errors for the regression coeﬀicient estimates for the da
 
 ### Task a: My answer
 
-The standard errors for regression coeﬀicient estimates for the data set d2 is 0.18017, generated from codes below.
+This chunk a function is made to calculate the standard error for regression coefficient, using bootstrapping technique.
 
 ```{r}
-set.seed(1112)
+set.seed(1112) # I did the task this day
 bootstrap_se <- function(data, n_bootstrap) {
   n <- nrow(data)
   coefs <- as.vector(NA)
@@ -1073,13 +1144,14 @@ bootstrap_se <- function(data, n_bootstrap) {
 
   return(sd(coefs))
 }
-bootstrap_se(d2, 1000)
+se <- bootstrap_se(d2, 1000)
 ```
 
-The previous exercise derived std.error for slope as 0.15977, displayed by codes below.
+The standard errors for regression coeﬀicient estimates for the data set d2 is `r se`, generated from codes above
 
 ```{r}
-model.table |> 
+get.previous.se <- 
+  model.table |> 
   dplyr::select(
     model_No,
     term,
@@ -1088,7 +1160,9 @@ model.table |>
   filter(model_No == 2, term == "slope")
 ```
 
-Comparing with each other, I found the SE from bootstrap is much larger than SE from conventional computation. Conventional SE computation are based on the assumptions of normality and homoscedasticity of residuals. However, I already discussed in task c of previous question that data 2 violates these assumptions. In such case, bootstrapping method, which does not assume normality and homoscedasticity, should work better and more trustworthy. 
+The previous exercise derived std.error for slope as `r get.previous.se[, "std.error"]`.
+
+Comparing with each other, I found the SE from bootstrap is much larger than SE from conventional computation. Conventional SE computation are based on the assumptions of normality and homoscedasticity of residuals. However, I already discussed in task c of previous question that data 2 violates these assumptions. In such case, bootstrapping method, which does not assume normality and homoscedasticity, should work better and more trustworthy.
 
 ## P6-Task b
 
@@ -1098,9 +1172,11 @@ Describe briefly in your own words how the bootstrap algorithm computes the stan
 
 ### Task b: my answer
 
-The standard error is the standard deviation of a sample population. It measures the accuracy with which a sample represents a population. Conventional method uses sample statistics to approximate population parameter and computes SE. In task a, instead, I calculated SE for regression coefficient in a bootstrapping way: I re-sampled n observations with replacement from d2 data for 1000 times. The resulting 1000 sample were fitted using linear regression, respectively. This gave me 1000 'population' of regression coefficients. Computing the Standard Deviation for them and I got the SE, according to definition of SE described above. 
+The standard error is the standard deviation of a sample population. It measures the accuracy with which a sample represents a population. Conventional method uses sample statistics to approximate population parameter and computes SE. To extrapolate population from a sample, some data distribution is often assumed, or else it will not work nicely. 
 
-## P6-Task c: 
+In task a, instead, I calculated SE for regression coefficient in a bootstrapping way: I re-sampled n observations with replacement from d2 data for 1000 times. The resulting 1000 sample were fitted using linear regression, respectively. This gave me 1000 'population' of regression coefficients. Computing the Standard Deviation for them and I got the SE, according to definition of SE described above.
+
+## P6-Task c:
 
 ### Task c: Question
 
@@ -1108,12 +1184,13 @@ In bootstrap, you sample 𝑛 data points from a population of 𝑛 points with 
 
 ### Task c: my answer
 
-Since replacement is allowed, 
+Since replacement is allowed,
 
 $$
 P(\text{not picked in any draw}) = \left(1 - \frac{1}{n}\right)^n
-$$
-Then, 
+$$ 
+
+Then,
 
 $$
 \\lim_{n \to \infty} \left(1 - \frac{1}{n}\right)^n = \frac{1}{\lim_{n \to \infty} \left(1 + \frac{1}{n}\right)^n} = \frac{1}{e} 
@@ -1137,15 +1214,15 @@ What did I learn? What did I not understand? Was there something relevant for ot
 
 ### Task a: My answer
 
-I am from the disciplines of medicine and educational science. I used to use most of the techniques in chapter 1-4 in my studies, by following how the analyses were done in publications, without realizing they are rooted in the power of machine learning. Thanks to these sessions, I finally systematically learnt them and got my mind much better organzied. 
+I am from the disciplines of medicine and educational science. I used to use most of the techniques in chapter 1-4 in my studies, by following how the analyses were done in publications, without realizing they are rooted in the power of machine learning. Thanks to these sessions, I finally systematically learnt them and got my mind much better organzied.
 
 I used to be confused about training, validation and testing data sets, but now I see how they relate to each other in a more structured way.
 
-I used to select predictors in a model using step-wise method. Now I get a bigger picture that it belongs to subset selection and there are some competing techniques. And I see the reason why it was developed: for the sake of efficiency. 
+I used to select predictors in a model using step-wise method. Now I get a bigger picture that it belongs to subset selection and there are some competing techniques. And I see the reason why it was developed: for the sake of efficiency.
 
 I used to determine the polynomial degree of my model by observing the lowess curve with my bare eyes, but now I get a more powerful data-driven approach: polynomial degree comparison and selection with loss function.
 
-Gladly that this course is not that mathematically heavy, at least until now, or else I might not be able to follow. But still, in the sessions I found some math blind spots (such as optimization) and I will make them up by joining more basic level courses, after this course. 
+Gladly that this course is not that mathematically heavy, at least until now, or else I might not be able to follow. But still, in the sessions I found some math blind spots (such as optimization) and I will make them up by joining more basic level courses, after this course.
 
 ## P7-Task b
 
@@ -1155,6 +1232,4 @@ Give an estimate of the hours used in solving the problems in this exercise set.
 
 ### Task b: My answer
 
-I used a day from 10:00 to 17:00 getting 4 questions done. I used another 3~4 hours of another day to get the remaining done. (I haven't done question 4 yet; I might quit it). In all, I spent ~10 hours solving the problems.
-
-
+I used a day from 10:00 to 17:00 getting 4 questions done. I used another 3\~4 hours of another day to get the remaining done. (I haven't done question 4 yet; I might quit it). In all, I spent \~10 hours solving the problems.
