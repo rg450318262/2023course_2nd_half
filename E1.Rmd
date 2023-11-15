@@ -727,6 +727,103 @@ And the difference between Total and MSE are small. Most of them range from -0.1
 hist(task.c.table$Total - task.c.table$MSE, breaks = 10, main = "Check the difference between Total and SqLoss", xlab = "diff between total and SqLoss", ylab = "frequency")
 ```
 
+# Problem 4 [6 points]
+
+Topic: theoretical properties of generalisation loss and OLS linear regression [Ch. 2-3]
+Consider a linear regression model $f(x) = \beta x$, where $\beta \in R$ is fit by ordinary least squares (OLS) to a set of training data $(x_1, y_1)$, ... , $(x_n, y_n)$, where the pairs $(x_i, y_i)$ have been drawn at random with replacement from a finite population, where $x_i \in R_p$, $y_i \in R$, and $i \in {1, ..., n}$. Suppose we have a testing data $(x_1, y_1)$, ... , $(x_m, y_m)$ drawn in the same way from the same population. Denote
+
+$L_{train} = \frac{1}{n} \Sigma_{i=1}^{n}(y_i - \hat{\beta^T}x_i)^2$
+
+and
+
+$L_{test} = \frac{1}{n} \Sigma_{i=1}^{m}(\bar{y}_i - \hat{\beta^T}\bar{x}_i)^2$
+
+The expectations below are defined over the resampling of both the training and testing data.
+
+## P4-Task a
+
+### Task a
+
+
+### Task a: Question
+
+Prove that
+
+$\mathbb{E}[L_{test}] =  \mathbb{E}[(\bar{y}_1 - \hat{\beta^T}\bar{x}_1)^2]$
+
+### Task a:: My Answer
+
+$$
+\textbf{Expectation of \( L_{\text{test}} \)}: \\
+$$
+
+$$
+\mathbb{E}[L_{\text{test}}] = \mathbb{E}\left[\frac{1}{m} \sum_{i=1}^{m} (y_i - \hat{\beta}^T x_i)^2\right]
+$$
+The expectation is linear, so we have:
+
+$$
+\mathbb{E}[L_{\text{test}}] = \frac{1}{m} \sum_{i=1}^{m} \mathbb{E}[(y_i - \hat{\beta}^T x_i)^2]
+$$
+Each pair $(x_i, y_i)$ in the test set is drawn independently and identically from the population (i.i.d). Thus, each $(y_i - \hat{\beta}^T x_i)^2$ has the same distribution, and their expectations are equal. Therefore:
+    $$\mathbb{E}[(y_i - \hat{\beta}^T x_i)^2] = \mathbb{E}[(y_1 - \hat{\beta}^T x_1)^2]$$
+    for all $i$. Hence:
+  
+  $$\mathbb{E}[L_{\text{test}}] = \mathbb{E}[(y_1 - \hat{\beta}^T x_1)^2]$$
+## P4-Task b
+
+### Task b: Question
+
+Prove that $L_{test}$ is an unbiased estimate of the generalization error for the OLS regression.
+
+### Task b: My answer
+
+An unbiased estimate in statistics is an estimator that, on average, correctly targets the parameter it is estimating. In more technical terms, an estimator is unbiased if its expected value is equal to the true value of the parameter it is estimating.
+
+To formalize this, let $\hat{\theta}$ be an estimator of a parameter$theta$. The estimator $\hat{\theta}$ is unbiased if:
+
+$$\mathbb{E}[\hat{\theta}] = \theta $$
+
+As such, in our case, we need to prove:
+
+$$
+\mathbb{E}[L_{\text{test}}] = \frac{1}{m} \sum_{i=1}^{m} \mathbb{E}[(y_i - \hat{\beta}^T x_i)^2] = \text{expected prediction error of an independent dataset}
+$$
+
+From the previous question, we already proved:
+
+$$\mathbb{E}[L_{\text{test}}] =\mathbb{E}[(y_i - \hat{\beta}^T x_i)^2]$$
+
+The test samples are drawn from the same finite population we target. Further, the pairs $(x_i, y_i)$ have been drawn at random with replacement from this finite population, where $x_i \in R_p$, $y_i \in R$, and $i \in {1, ..., n}$. We can say each $(y_i - \hat{\beta}^T x_i)^2$ is i.i.d, and their expected value represents the expected prediction error. Therefore:
+
+$$
+\mathbb{E}[L_{\text{test}}] = \text{expected prediction error of an independent dataset}
+$$
+
+## P4-Task c
+
+### Task c: Question
+
+Prove that $$\mathbb{E}[L_{\text{train}}] ≤ \mathbb{E}[L_{\text{test}}]$$ .
+
+### Task c: My answer
+
+Quit...
+
+## P4-Task d
+
+### Task d: Question
+
+Explain how the task result above is related to the generalisation problem in machine learning.
+
+### Task d: My answer
+
+`Task a`: it proved that the expected error of the model on the entire test dataset is equivalent to the expected error on any single data point from the test set. This information highlights the importance of gernalization problem: a good model should work for any new unseen data. But if we only have one unseen data point we are not able to approximate its expectation. Hence, we used a number of such data point to form a test set. 
+
+`Task b`: $L_{\text{test}}$ is an unbiased estimate of the generalization error, namely, the average error the model makes on the test data (data not seen during training) reflects its true error on any new data from the same population. In machine learning, one of the key challenges is to assess how well a model will perform on new data. This proven judgment can be seen as theoretical foundation for this assessment.
+
+`Task c`: In machine learning we hope for generalizing a model trained on training data to unseen population data. That is, we want a model that performs well not only on the data it has seen during training but also on new data, the statistics of which can be the expectation of the statistics of a test data (i.i.d). The result $\mathbb{E}[L_{\text{train}}] ≤ \mathbb{E}[L_{\text{test}}]$ captures this notion, indicating that models tend to perform better on the data they were trained on.
+
 # Problem 5 [6 points]
 
 Objective: properties of estimators
