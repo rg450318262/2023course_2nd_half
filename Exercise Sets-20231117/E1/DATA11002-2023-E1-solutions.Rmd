@@ -1,0 +1,686 @@
+---
+title: "Solutions for Exercise Set 1"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+urlcolor: blue
+---
+
+Note that the model answers contain more code than is required from the actual answers.
+The code is included for your reference (for the full source code, see the corresponding R markdown file).
+Some questions in the problem sheet are marked "optional": you should not reduce points if an answer to such a question is missing.
+
+While we have tried to make the answers comprehensive and correct it is possible that there are mistakes and omissions; please tell us if you find anything!
+
+## Problem 1
+
+```{r, include=FALSE}
+path_to_python <- "/opt/homebrew/Caskroom/miniforge/base/envs/atm-env-1/bin/python"
+if (file.exists(path_to_python)) {
+    reticulate::use_python(path_to_python)
+}
+```
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+### Task a
+
+```{python}
+# Python
+amol = pd.read_csv("./p1.csv")
+amol = amol.drop(columns=["id","SMILES","InChIKey"],axis=1)
+amol
+```
+
+```{r}
+# R
+amol = read.csv("./p1.csv")
+amol = amol[,-(1:3)]
+#amol 
+# View(amol)
+```
+
+### Task b
+
+```{python}
+# Python
+amol[["pSat_Pa","NumOfConf","ChemPot_kJmol"]].describe()
+```
+
+```{r}
+# R
+summary(amol[,c("pSat_Pa","NumOfConf","ChemPot_kJmol")]) 
+```
+
+### Task c
+
+```{python}
+# Python
+print(amol['ChemPot_kJmol'].mean(), amol['ChemPot_kJmol'].std())
+```
+
+```{r}
+# R
+cat(mean(amol$ChemPot_kJmol), sd(amol$ChemPot_kJmol))
+```
+
+### Task d
+
+```{python}
+# Python
+fig, axes = plt.subplots(1,2,figsize=(10,5))
+_ = axes[0].hist(np.log10(amol["pSat_Pa"].values), bins=25,histtype="step",density=True)
+_ = axes[1].boxplot(amol["NumOfConf"].values, showcaps=True)
+plt.show()
+```
+
+```{r}
+# R
+par(mfrow = c(1, 2))
+hist(log10(amol$pSat_Pa), breaks = 20, main = "Histogram for log10(pSat_Pa)") 
+boxplot(amol$NumOfConf, main = "Boxplot for NumOfConf")
+```
+
+### Task e
+
+```{python,warning=FALSE,message=FALSE}
+# Python
+sns.pairplot(amol[["MW","HeatOfVap_kJmol","FreeEnergy_kJmol"]])
+```
+
+```{r}
+# R
+pairs(amol[,c("MW","HeatOfVap_kJmol","FreeEnergy_kJmol")])
+```
+
+### Grading
+
+Points: max. 6 (Tasks a-c: 1 point each, Tasks d-e: 3 points total)
+
+It is enough to report that the instructed commands were run in Tasks a-b. The important thing is that the data set is preprocessed as instructed (in a manner done in the programming environment) and the requested analysis is performed.
+
+
+\newpage
+
+## Problem 2
+
+```{r,echo=FALSE}
+syn_tr = read.csv("train_syn.csv")
+syn_va = read.csv("valid_syn.csv")
+syn_te = read.csv("test_syn.csv")
+```
+
+### Task a
+
+The requested table is shown below. 
+
+```{r echo=FALSE}
+mse <- function(y, yhat) mean((y - yhat)^2)
+
+cv <- function(formula, 
+               data, 
+               model = lm, 
+               k = 10, 
+               train = function(data) model(formula, data = data),
+               pred = function(model, data) predict(model, newdata = data)) {
+    split <- rep_len(1:k, nrow(data)) 
+    yhat <- rep(0, nrow(data))
+    for (i in 1:k) {
+        mod <- train(data[split != i, ])
+        yhat[split == i] <- pred(mod, data[split == i, ])
+    }
+    yhat 
+}
+
+make_row <- function(degree, data_tr, data_va, data_te) {
+    form <- if (degree == 0) formula(y ~ 1) else formula(y ~ poly(x, degree))
+    data_trva = rbind(data_tr, data_va)
+    m.tr <- lm(form, data_tr)
+    m.trva <- lm(form, data_trva)
+
+    c(
+        `Train` = mse(data_tr$y, predict(m.tr, data_tr)),
+        `Validation` = mse(data_va$y, predict(m.tr, data_va)),
+        `Test` = mse(data_te$y, predict(m.tr, data_te)),
+        `TestTRVA` = mse(data_te$y, predict(m.trva, data_te)),
+        CV = mse(data_trva$y, cv(form, data_trva))
+    )
+}
+
+res <- data.frame(Degree = 0:8, t(sapply(0:8, make_row, data_tr=syn_tr, data_va=syn_va, data_te=syn_te)))
+knitr::kable(res, digits = 3)
+```
+
+
+We choose the polynomial order according to the `CV` loss, which is minimized for the 2nd degree polynomial. We would train the "final" model by using the combined training and validation set. 
+
+Some things to notice: 
+
+- `Train` decreases for larger polynomial degrees.
+- `Test` is smallest for the degree 2 polynomial, which is consistent with the fact that data is created by a degree 2 polynomial plus noise (which was not known to you).
+- `TestTRVA` is lower than `Test`, as expected, since we train the regressor on more data.
+- `Validation` is smallest for the degree 3 polynomial, due to the quite small validation set. 
+    - We would expect that E[Train] < E[Validation] < E[Test]. However, this expectation does not always hold, due to variance in the estimators (e.g., the validation set has only 10 items).
+- `CV` is smallest for the degree 2 polynomial, which is the degree we should choose if we would trust the CV result.
+
+### Task b
+
+The plots for the polynomials are shown below. 
+
+```{r echo=FALSE, fig.align="center", fig.height=4, fig.width=8}
+make_plot <- function(degree, data_tr, ...) {
+    x <- seq(from = -3, to = 3, length.out = 200)
+    form <- if (degree == 0) formula(y ~ 1) else formula(y ~ poly(x, degree))
+    m <- lm(form, data_tr)
+    plot(c(-3, 3), range(data_tr$y), type = "n", xlab = "x", ylab = "y", ...)
+    points(data_tr)
+    lines(x, predict(m, data.frame(x = x)))
+}
+set.seed(42)
+par(mfrow = c(2, 3), mar = rep(2.5, 4))
+for (degree in c(0,1,2,3,4,8)) {
+    make_plot(degree, syn_tr, main = sprintf("Degree %d", degree))
+}
+```
+
+### Task c
+
+The requested table is shown below. As an additional model we selected a regression tree (`RT`). 
+
+
+```{r, eval=TRUE, echo = FALSE}
+## You should usually use a random seed to have repeatable results.
+## I always use 42, but you are free to choose a different seed.
+## You can try to vary your random seed to see if your conclusions
+## change (obviously, it might be because these are random algorithms).
+set.seed(42)
+
+library(MASS)
+suppressPackageStartupMessages(library(randomForest))
+library(e1071) # SVM
+library(rpart) # Decision tree
+
+real_train <- read.csv("train_real.csv") # train using this data
+real_test <- read.csv("test_real.csv") # holdout data for final analysis
+
+#' root mean squared error measure
+rmse <- function(yhat, y) sqrt(mean((y - yhat)**2))
+
+#' split n items into k folds of roughly equal size
+kpart <- function(n, k) {
+    rep_len(1:k, length.out = n)
+}
+
+#' Find cross-validation predictions
+cv <- function(
+               formula, # Formula specifying which variables to use
+               data, # Dataset
+               model = lm, # Type of model to train (as a function)
+               n = nrow(data), # number of rows in the data matrix
+               k = min(n, 10), # number of cross-validation folds
+               split = kpart(n, k), # the split of n data items into k folds
+               ## function to train a model on data
+               train = function(data) model(formula, data = data),
+               ## function to make predictions on the trained model
+               pred = function(model, data) predict(model, newdata = data)) {
+    yhat <- NULL
+    for (i in 1:k) {
+        ## go through all folds, train on other folds, and make a prediction
+        mod <- train(data[split != i, ])
+        if (is.null(yhat)) {
+            ## initialise yhat to something of correct data type,
+            yhat <- pred(mod, data)
+        } else {
+            yhat[split == i] <- pred(mod, data[split == i, ])
+        }
+    }
+    yhat # finally, output cross-validation predictions
+}
+
+## Dummy model is here a model that ignores the covariates and always
+## predicts the mean of the training data. We use a linear regression
+## model with only intercept as a dummy model.
+dummy <- function(formula, data) {
+    target <- all.vars(formula[[2]])
+    lm(as.formula(sprintf("%s ~ 1", target)), data)
+}
+
+## Some regression models implemented in R. For documentation, just type
+## ?lm, ?rpart etc. Notice that you need the above-mentioned libraries to be
+## able to use these models.
+models <- list(
+    Dummy = dummy,
+    OLS = lm,
+    RF = randomForest,
+    SVM = svm,
+    RT = rpart
+)
+
+a <- sapply(models, function(model) {
+    mod <- model(Next_Tmax ~ ., data = real_train)
+    c(
+        Train = rmse(predict(mod, newdata = real_train), real_train$Next_Tmax),
+        Test = rmse(predict(mod, newdata = real_test), real_test$Next_Tmax),
+        CV = rmse(cv(Next_Tmax ~ ., real_train, model), real_train$Next_Tmax)
+    )
+})
+
+knitr::kable(t(a), "simple", digits = 3)
+```
+
+1. The best regressor is RF because it has the smallest CV and test losses (even if it overfits to the training data). The simple baseline OLS is also surprisingly good on test data. 
+
+2. `Train` errors are smaller than `Test` errors. `CV` and `Test` errors are roughly the same, as expected. An exception is the dummy model, since it is so simple and the train and test sets are drawn from the same distribution.
+
+3. The regressors can be improved in several ways, such as:  
+
+- Feature selection. Try to use only a subset of the features which might lead to a better loss on the training data. 
+- Parameter tuning. The regression models often include parameters that can be tuned, I could use the cross-validation loss to find variants of the models that would perform better.
+
+### Task c (Python)
+
+```{python,eval=TRUE, echo=FALSE}
+import os
+import numpy as np
+import pandas as pd
+
+from sklearn.dummy import DummyRegressor
+from sklearn.linear_model import LinearRegression, LassoCV
+from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import mean_squared_error
+
+np.random.seed(42)
+
+nwp1 = pd.read_csv("train_real.csv")
+nwp2 = pd.read_csv("test_real.csv")
+
+X_train= nwp1.drop(["Next_Tmax", "station"], axis=1)
+X_test = nwp2.drop(["Next_Tmax", "station"], axis=1)
+
+y_train =  nwp1["Next_Tmax"]
+y_test =  nwp2["Next_Tmax"]
+```
+
+```{python,eval=TRUE, echo=FALSE}
+models = [DummyRegressor(), LinearRegression(), SVR(), RandomForestRegressor(), LassoCV()]
+
+res = pd.DataFrame(index=["dummy", "OLS", "SVR", "RF", "LASSO"])
+
+def loss(X_tr, y_tr, X_te, y_te, m):
+    return mean_squared_error(y_te, m.fit(X_tr, y_tr).predict(X_te), squared=False)
+
+res["train"] = [loss(X_train, y_train, X_train, y_train, m) for m in models]
+res["test"] = [loss(X_train, y_train, X_test, y_test, m) for m in models]
+res["cv"] = [
+    -cross_val_score(
+        m, X_train, y_train, cv=10, scoring="neg_root_mean_squared_error"
+    ).mean()
+    for m in models
+]
+
+np.round(res, 3)
+```
+
+*__Bonus observation:__ The SVR results are surprisingly bad (comparable to the dummy model). This is because we haven't scaled the data. Some implementations of SVM:s automatically scale the data (such as the one in the `e1071` package for `R`). Lets try the SVR from `sklearn` again, but this time preprocessing the data to have zero mean and unit variance:*
+
+```{python,eval=TRUE, echo=FALSE}
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler() # "Standard" scaling leads to zero mean and unit variance
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+res_svm = pd.DataFrame({
+      'train': loss(X_train_scaled, y_train, X_train_scaled, y_train, SVR()),
+      'test': loss(X_train_scaled, y_train, X_test_scaled, y_test, SVR()),
+      'cv': -cross_val_score(SVR(), X_train_scaled, y_train, cv=10, scoring="neg_root_mean_squared_error").mean(),
+}, index = ["SVR"])
+
+np.round(res_svm, 3)
+```
+
+*As we can see, it is often a good idea to scale the variables before doing machine learning, since some models are sensitive to the scale of the variables.* (This observation does not affect the grading)
+
+
+### Grading
+
+Points: max. 8 (a: 3, b: 2, c: 3)
+
+The answer should get full points if the asked for numbers from the table have been produced, as well as figures requested, and there additionally an answer to direct questions asked.
+
+\newpage
+
+
+## Problem 3
+
+### Task a
+
+The curve shapes are explained as follows: 
+
+- The training error is usually smaller than the test error for any flexibility. It tends to decrease as model flexibility grows, going close to zero for very flexible models. 
+- The test error is large for small flexibility (under-fitting) and large flexibility (over-fitting), having the minimum in between. For regressors with MSE loss, the test error is the sum of the irreducible error, squared bias, and variance.
+- The irreducible (or Bayes) error is constant, because it does not depend on the model. It gives a lower bound for the generalization error of any model for a particular task. 
+- The squared bias is large for inflexible models and small for flexible models. The opposite is true for variance. 
+
+A sketch of the curves is shown in the figure below (low flexibility on the left and large flexibility on the right). 
+
+```{r, echo=FALSE, fig.height=3, fig.width=6, fig.align='center'}
+suppressPackageStartupMessages(library(ggplot2))
+x <- seq(from = 0, to = 1, length.out = 200)
+bias2 <- 0.5 - 0.5 * sqrt(x)
+variance <- 0.5 - 0.5 * sqrt(1 - x)
+bayeserror <- rep(0.1, length(x))
+testerror <- bayeserror + bias2 + variance
+trainingerror <- 0.8 * testerror[1] * (1 - x)^2
+
+color_palette = c("Irreducible"="darkgrey", "BiasSq"="red", "Variance"="blue", "Train"="black", "Test"="black", "MSE"="black", "Total"="black")
+lty_palette = c("Irreducible"="dotted", "BiasSq"="dotted", "Variance"="dotted", "Train"="solid", "Test"="dashed", "MSE"="dashed", "Total"="dotted")
+ggplot() +
+  geom_line(aes(x, bias2, color = "BiasSq", linetype = "BiasSq")) +
+  geom_line(aes(x, variance, color = "Variance", linetype = "Variance")) +
+  geom_line(aes(x, trainingerror, color = "Train", linetype = "Train")) +
+  geom_line(aes(x, testerror, color = "Test", linetype = "Test")) +
+  geom_line(aes(x, bayeserror, color = "Irreducible", linetype = "Irreducible")) +
+    labs(color = "", linetype = "", x = "Flexibility", y = "Error") +
+  scale_color_manual(values = color_palette) + 
+  scale_linetype_manual(values = lty_palette) + 
+    theme_classic() +
+    theme(axis.ticks = element_blank(), axis.text = element_blank(), text = element_text(size = 10))
+```
+
+### Task b
+
+The requested table is shown below. 
+
+```{r, echo=FALSE}
+set.seed(42)
+
+f <- function(x) 2.0 - x + x^2
+
+make_data <- function(n) {
+    x <- runif(n, min = -3, max = 3)
+    y <- f(x) + 0.4 * rnorm(n)
+    data.frame(x = x, y = y)
+}
+
+bv <- function(degree, iter = 1000) {
+    ## Create a dataset of 10 points, train a regression function, and predict
+    ## the value at $x=0$; we do this 1000 times. For each of the 1000
+    ## datasets we get a prediction g(0) from the regression function.
+    form <- if (degree > 0) formula(y ~ poly(x, degree)) else formula(y ~ 1)
+    fhat <- replicate(iter, predict(lm(form, make_data(10)), data.frame(x = 0)))
+    ## The 1000 test data points at (0,y0)
+    y0 <- f(0) + 0.4 * rnorm(iter)
+
+    ## Bayes error is here sigma^2 or about 0.4.
+    sigma2 <- mean((y0 - f(0))^2)
+    ## (squared) bias (E[g]-f(0))^2
+    bias2 <- (mean(fhat) - f(0))^2
+    ## variance E((g-E[g])^2)
+    variance <- mean((fhat - mean(fhat))^2)
+    total <- sigma2 + bias2 + variance
+    ## total0 = E[(y0-g)^2]
+    mse <- mean((y0 - fhat)^2)
+    c(Irreducible = sigma2, BiasSq = bias2, Variance = variance, Total = total, MSE = mse)
+}
+
+BVD <- data.frame(Degree = 0:6, t(sapply(0:6, bv)))
+knitr::kable(BVD, "simple", digits = 4)
+```
+
+We also plot the terms from the table:
+
+```{r, echo=FALSE, fig.height=3, fig.width=6, fig.align='center'}
+
+ggplot(BVD) +
+    geom_line(aes(Degree, BiasSq, color = "BiasSq", linetype = "BiasSq")) +
+    geom_line(aes(Degree, Variance, color = "Variance", linetype = "Variance")) +
+    geom_line(aes(Degree, Irreducible, color = "Irreducible", linetype = "Irreducible")) +
+    geom_line(aes(Degree, Total, color = "Total", linetype = "Total")) +
+    geom_line(aes(Degree, MSE, color = "MSE", linetype = "MSE")) +
+    labs(color = "", linetype = "", x = "Degree", y = "Error") +
+    scale_color_manual(values = color_palette) + 
+    scale_linetype_manual(values = lty_palette) + 
+    theme_classic() +
+    theme(text = element_text(size = 10))
+```
+
+The bias-variance decomposition behaves as expected. 
+
+- The irreducible error is roughly constant (it does not depend on the regression model used), 
+- The squared bias decreases as flexibility (here polynomial degree) increases.
+- The variance increases as flexibility (here polynomial degree) increases.  
+- We can verify Eq. (2.7) of James et al. by observing that the columns `Total` and `MSE` are roughly equal.
+
+The small inconsistencies are due to to the fact that we estimated the components by sampling $1000$ datasets. The inconsistencies should be smaller if we would sample more datasets.
+
+### Grading
+
+Points: max. 6 (a: 2, b: 4)
+
+
+\newpage
+## Problem 4
+
+
+Notice that, as discussed in the problem statement, there are confusingly at least two different ways to define the expectation $E$ and the generalisation error: (i) take the training data to be fixed and sample the test data, and (ii) sample over both training and test data. See Bengio et al.\footnote{Bengio, Y., Grandvalet, Y., 2004. No unbiased estimator of the variance of K-fold cross-validation. J. Mach. Learn. Res. 5, 1089-1105. \url{https://www.jmlr.org/papers/v5/grandvalet04a.html}}, Section 2.1, and Nadeau et al.\footnote{Nadeau, C., Bengio, Y., 2003. Inference for the Generalization Error. Mach. Learn. 52, 239-281. \url{https://doi.org/10.1023/A:1024068626366}} for discussion. Tasks a and b would work with either definition; in Task c we use the second definition. However, for simplicity, in the following proof, the second definition is used.
+
+
+### Task a 
+
+Since all test data points are drawn from the same population, we have $E\left[\left(\overline y_1-\hat\beta^T\overline x_1\right)^2\right]=\ldots=E\left[\left(\overline y_m-\hat\beta^T\overline x_m\right)^2\right]$. It follows that 
+$$
+E\left[L_{test}\right]=
+E\left[\frac 1m\sum\nolimits_{i=1}^m{\left(
+\overline y_i-\hat\beta^T\overline x_i
+\right)^2}\right]=
+\frac 1m\sum\nolimits_{i=1}^m{
+E\left[
+\left(
+\overline y_i-\hat\beta^T\overline x_i
+\right)^2
+\right]
+}=
+E\left[\left(\overline y_1-\hat\beta^T\overline x_1\right)^2\right],
+$$
+where we have used the linearity of the expectation.
+
+This proves the claim of the Task a.
+
+
+
+### Task b
+
+The generalisation error for OLS regression is defined as the expected squared loss for a new data point not used in training. Therefore, $L=E\left[\left(\overline y_1-\hat\beta^T\overline x_1\right)^2\right]=E\left[L_{test}\right]$ is the generalisation error by definition. Since the expectation equals the estimated quantity the estimator is unbiased.
+
+
+### Task c
+It follows from Task a above that $E\left[L_{test}'\right]=E\left[L_{test}\right]$ as well, where
+$$
+L_{test}'=\frac 1n\sum\nolimits_{i=1}^n{\left(\overline y_i'-\hat\beta^T\overline x_i'\right)^2},
+$$
+and $(\overline x'_1,\overline y'_1),\ldots,(\overline x'_n,\overline y'_n)$ have been drawn randomly from the same population. In other words, the value of $m$ does not really matter here.
+
+We can use this observation to prove our "theorem".
+
+**Theorem:** $E\left[L_{train}\right]\le E\left[L_{test}\right]$.
+
+*Proof:* By Task a and the observation above, the claim is equivalent to $E\left[L_{train}\right]\le E\left[L_{test}'\right]$. Recall that ordinary least squares (OLS) linear regression finds $\hat\beta$ such that the loss given by $L_{train}$ is minimised, after which
+ $$L_{train}=\min\nolimits_{\beta}{\left(\frac 1n\sum\nolimits_{i=1}^n{\left(y_i-\beta^Tx_i\right)^2}\right)}.$$
+ The following equation obviously holds for any $\hat\beta$ (random variable or not), because the expression inside the expectation is always non-negative:
+ $$
+ E\left[
+ \frac 1n\sum\nolimits_{i=1}^n{\left(\overline y'_i-\hat\beta^T\overline x'_i\right)^2}
+ -
+ \min\nolimits_{\beta}{\left(\frac 1n\sum\nolimits_{i=1}^n{\left( \overline y'_i-\beta^T\overline x'_i\right)^2}\right)}
+ \right]\ge 0
+ $$
+By linearity of expectation we can rewrite the above as;
+$$
+ E\left[
+ \frac 1n\sum\nolimits_{i=1}^n{\left(\overline y'_i-\hat\beta^T\overline x'_i\right)^2}\right]
+ -
+ E\left[\min\nolimits_{\beta}{\left(\frac 1n\sum\nolimits_{i=1}^n{\left(\overline y'_i-\beta^T\overline x'_i\right)^2}\right)}
+ \right]\ge 0
+ $$
+ 
+ Since $\min\nolimits_{\beta}{\left(\frac 1n\sum\nolimits_{i=1}^n{\left(\overline y'_i-\beta^T\overline x'_i\right)^2}\right)}$ and $\min\nolimits_{\beta}{\left(\frac 1n\sum\nolimits_{i=1}^n{\left( y_i-\beta^T x_i\right)^2}\right)}$ have the same law, their expectations are equal. So
+ $$
+ E\left[ \min\nolimits_{\beta}{\left(\frac 1n\sum\nolimits_{i=1}^n{\left(\overline y'_i-\beta^T\overline x'_i\right)^2}\right)} \right] = E[L_{train}].
+ $$
+And as $E\left[L_{test}'\right]=E\left[L_{test}\right]$, we derive
+$$E\left[L_{test}\right]-E\left[L_{train}\right]\ge 0,$$
+which proves the theorem.
+
+
+### Task d
+
+Theorem 2 shows that the expected loss on the training data cannot be larger than the expected loss on the test data. In machine learning, we usually want to estimate the *generalization loss* $L$.
+
+Consider the case where we use the loss on training data $L_{train}$ as an estimator of the generalisation loss $L$. The difference between the expectation of the estimator and the ground truth is called the *bias* of the estimator, which can here be written as  ${\rm{bias}}=E\left[L_{train}\right]-L=E\left[L_{train}\right]-E\left[L_{test}\right]$. For finite training data ($n$ finite) and OLS linear regression, this bias is always negative, which means that we tend to underestimate the generalisation loss and that OLS linear regression tends to overfit to the training data.
+
+### Grading
+
+
+You should give full or almost full points *if* the idea is correct, even though the proofs would be "shaky". However, please point out any ambiguities in your review. 
+
+Points: max. 6 (a: 2, b: 1, c: 2, d: 1)
+
+
+\newpage
+
+## Problem 5
+
+The dataset in this problem is the famous [Anscombe's quartet](https://en.wikipedia.org/wiki/Anscombe%27s_quartet).
+
+### Task a
+
+We use R's built-in `summary` function to obtain the required values, shown below. 
+
+We can reject the null hypothesis (at level $\alpha=0.05$) that the slope is zero, either by observing the coefficient for `x` has a p-value less than $\alpha$, or equivalently, by observing that zero is not in the 95% confidence interval for `x`, given by `Estimate` $\pm$ `2 * Std. Error`. The small p-value gives some indication that an increase in x is associated with an increase or decrease in y, but it is not a “safe conclusion" because we are not sure if assumptions of linear regression hold for a given dataset.
+
+```{r, echo=FALSE}
+data = setNames(lapply(sprintf("d%d.csv", 1:4), read.csv), sprintf("D%d", 1:4))
+models = lapply(data, \(d) lm(y~x, d))
+for (i in seq_along(models)) {
+  cat(names(models)[[i]])
+  print(summary(models[[i]]), digits=2, signif.stars=FALSE)
+}
+```
+
+### Task b
+
+The data and their regression lines are shown below. 
+
+We notice that the regression lines are the same, although the data sets look very different. 
+The [data sets](https://en.wikipedia.org/wiki/Anscombe%27s_quartet) also have the same average x, average y, standard deviation of x, standard deviation of y, correlation between x and y, and R squared value. 
+
+The conclusion here is that you should always plot the data and the model. Don't blindly trust loss values or p-values (or even averages). 
+
+```{r fig.width=6, fig.height=6, fig.align='center', echo=FALSE}
+par(mfrow=c(2,2))
+for (i in seq_along(data)) {
+  plot(data[[i]], xlim=c(3,20), ylim=c(0,13), main=names(data)[i])
+  abline(models[[i]])
+}
+```
+
+### Task c
+
+James et al. Sect. 3.3.3 lists 6 potential problems for linear regression:
+
+1. Non-linearity of the response-predictor relationship
+2. Correlation of error terms
+3. Non-constant variance of error terms
+4. Outliers
+5. High-leverage points
+6. Collinearity
+
+Out of these problems, the following apply to each data set: 
+
+- D2: `y` is a *non-linear* function of `x`, as we can see from the scatterplot above, or from a residual plot: 
+
+```{r fig.width=3, fig.height=3, fig.align='center', echo=FALSE}
+plot(predict(models$D2), residuals(models$D2), xlab="Predictions", ylab="Residuals", main="D2")
+abline(h=0, lty=2)
+```
+
+- D3: There is an *outlier* point evident from the scatterplot above, or from the residual plot below. Robust regression would ignore the outlier.
+
+```{r fig.width=3, fig.height=3, fig.align='center', echo=FALSE}
+plot(predict(models$D3), residuals(models$D3), xlab="Predictions", ylab="Residuals", main="D3")
+abline(h=0, lty=2)
+```
+
+- D4: There is a *high-leverage* point (outlier in x) evident from the scatterplot above, or from the residual plot below. If we delete the point, the estimates change a lot.
+
+```{r fig.width=3, fig.height=3, fig.align='center', echo=FALSE}
+plot(predict(models$D4), residuals(models$D4), xlab="Predictions", ylab="Residuals", main="D4")
+abline(h=0, lty=2)
+```
+
+### Grading
+
+Points: max. 6 (a: 2, b: 2, c: 2)
+
+
+\newpage
+
+## Problem 6
+
+### Task a
+
+We follow here ISLR_v2 lab section Section 5.3.4. First, we make a function that fits a linear regression model to the data for a given subset of data points and outputs the regression coefficients.
+
+```{r}
+## Use data from the previous problem
+## From Sect. 5.3 of ISLR_v2:
+boot.fn <- function(d, index)
+  coef(lm(y ~ x, data=d, subset=index))
+boot.fn(data[[2]], 1:nrow(data[[2]]))
+```
+
+Bootstrap samples new data set by replacement and fits a linear model. R function `boot` does this automatically, even though implementing it all by yourself would not be too complicated. 
+
+```{r}
+library(boot)
+set.seed(42)
+boot(data[[2]], boot.fn, 1000)
+```
+
+For dataset 2 the standard deviation for intercept ($1.48$ vs. $1.12$) and slope ($0.16$ vs $0.12$) are larger than in the previous problem. The difference is due to the fact that the t-test used in the previous problem involves several assumptions (normality, homoscedasticity, etc.) which may be violated in dataset 2. Bootstrap makes fewer distributional assumptions and, hence, in this case probably the bootstrap estimate is more trustworthy and robust. Notice that you should be careful in interpreting the regression coefficients for dataset 2 because our modelling assumptions seem to be wrong: the dataset looks like a curved line and it is doesn't seem that the underlying model is a straight line plus uncorrelated homoscedastic noise (our modelling assumption).
+
+
+### Taks b
+
+The algorithm creates many bootstrap datasets from dataset 2. To create a bootstrap dataset, it draws $n$ $(x,y)$-samples with replacement from dataset 2. For each bootstrap dataset, it fits a linear model and obtains the corresponding values for intercept and slope. The bootstrap standard deviations for the intercept and slope are the standard deviations of the intercept and slope, respectively, of the lines fitted to the bootstrapped datasets.
+
+### Task c
+
+A bootstrap sample consists of $n$ items drawn out of $\{1,\ldots,n\}$ with replacement.
+
+Let's look at one item $j\in\{1,\ldots,n\}$. The item $j$ is not in a draw with a probability of $1-1/n$. Since draws are independent the item $j$ is not in any of the $n$ draws with a probability $(1-1/n)^n$. At the limit $n\to\infty$ the item $j$ is therefore missing from the bootstrap sample with a probability of $\lim\nolimits_{n\to\infty}{(1-1/n)^n}=1/e\approx 0.368$. Or equivalently, the item $j$ is in the bootstrap sample with a probability of $1-1/e\approx 0.632$. 
+
+Therefore roughly a third of the items is missing from a bootstrap sample!
+
+### Grading
+
+Points: max. 6 (a: 2, b: 2, c: 2)
+
+\newpage
+
+## Problem 7
+
+Give full points if the answer contains some sentences that are about the topic of the question.
+
+### Grading
+
+Points: max. 2
