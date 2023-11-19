@@ -15,7 +15,7 @@ output:
 
 ***
 
-# E1
+# E2
 
 ```{r child = "E2_assignment.Rmd"}
 ```
