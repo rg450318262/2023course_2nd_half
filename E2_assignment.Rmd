@@ -4,6 +4,9 @@ output:
    html_document:
      code_folding: hide
 date: "2023-11-18"
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
@@ -12,14 +15,20 @@ knitr::opts_chunk$set(collapse = TRUE, warning = T, message = T)
 
 # Problem 8
 
-Performance measures
-In this exercise set, you will train probabilistic classifiers which estimate $\hat{p}(y | x)$): the probability of class 𝑦 given the covariate vector x. Two commonly used performance measures for probabilistic classifiers are accuracy and perplexity. We use the following notation:
+Performance measures In this exercise set, you will train probabilistic
+classifiers which estimate $\hat{p}(y | x)$): the probability of class 𝑦
+given the covariate vector x. Two commonly used performance measures for
+probabilistic classifiers are accuracy and perplexity. We use the
+following notation:
 
 • $y_i \in \{0,1\}$: the true class of point 𝑖.
 
-• $\hat{p} = \hat{p}(y = 1 | x)$: the estimated probability for the 𝑖th point in a dataset of size 𝑛 being spam.
+• $\hat{p} = \hat{p}(y = 1 | x)$: the estimated probability for the 𝑖th
+point in a dataset of size 𝑛 being spam.
 
-• $\hat{y}$: the predicted class for point i which is $\hat{y} = 1$ if $\hat{p} \geq 0.5$ and $\hat{y} = 0$.We define the accuracy on a dataset of n items as follows:
+• $\hat{y}$: the predicted class for point i which is $\hat{y} = 1$ if
+$\hat{p} \geq 0.5$ and $\hat{y} = 0$.We define the accuracy on a dataset
+of n items as follows:
 
 $$
 accuracy = \Sigma_{i=1}^{n}I(y = \hat{y_i})/n
@@ -29,21 +38,26 @@ $$
 perplexity = \exp(-\Sigma_{i=1}^{n}log\hat{p}(y = y_i|x_i)/n)
 $$
 
-Perplexity is a transformation of the likelihood (perplexity = exp(−loglikelihood/𝑛)), which may be the most commonly used performance measure on probabilistic classifiers. Example values are perplexity = 1 for a perfect classifier, which always predicts the probability of one to an actual class, and perplexity = 2 for coin flipping, which has a predicted class probabilit $\hat{p} = 1/2$.
+Perplexity is a transformation of the likelihood (perplexity =
+exp(−loglikelihood/𝑛)), which may be the most commonly used performance
+measure on probabilistic classifiers. Example values are perplexity = 1
+for a perfect classifier, which always predicts the probability of one
+to an actual class, and perplexity = 2 for coin flipping, which has a
+predicted class probabilit $\hat{p} = 1/2$.
 
-## Problem 1 Task a
+## Problem 8 Task a
 
-### Question (Problem 1 Task a)
+### Question
 
-Using one-hot encoding for $y_i$, train a logistic regression model without Lasso or Ridge regularisation on the training data. Then:
-(i) Report the model coeﬀicients.
-(ii) Compute and report the accuracy and perplexity on the training and testing data. Make sure that you
-use no regularisation. Notice that you may get warnings about convergence; why?
-(iii) Write down the equation for the predicted class probability, given the model coeﬀicients $\beta$ and the
-covariate vector $x$.
+Using one-hot encoding for $y_i$, train a logistic regression model
+without Lasso or Ridge regularisation on the training data. Then: (i)
+Report the model coeﬀicients. (ii) Compute and report the accuracy and
+perplexity on the training and testing data. Make sure that you use no
+regularisation. Notice that you may get warnings about convergence; why?
+(iii) Write down the equation for the predicted class probability, given
+the model coeﬀicients $\beta$ and the covariate vector $x$.
 
-### My answer (Problem 1 Task a)
-
+### My answer
 
 ```{r}
 
@@ -58,13 +72,13 @@ test.set <-
   read_csv(file.path(here(), "Exercise Sets-20231117", "E2", "data_E2", "spam_test.csv"))
 ```
 
-**The table below shows the coefficients for the model without regularization.**
+**The table below shows the coefficients for the model without
+regularization.**
 
 ```{r}
 train.set |> map(is.na) |> map(sum)
 test.set |> map(is.na) |> map(sum)
 ```
-
 
 ```{r waning = T, message=T}
 #load packages
@@ -187,27 +201,51 @@ baseline_test_perplexity <- get_perplexity(fit, test.set, "SPAM")[1,2]
 
 ```
 
-**Why don't converge?** The warning of convergence can be the result of overly complex model, multi-colinearity and too few observations in terms of predictors. In our case, we have fairly small number of predictors against observations. I suppose the problem is mostly due to multi-colinearity. This can be further consolidated by the common fact that a spam email usually has more than one of these identifying features. To tell the truth, I say it mostly because task b is about regularization. Couldn't find a safer guess. :) 
+**Why don't converge?** The warning of convergence can be the result of
+overly complex model, multi-colinearity and too few observations in
+terms of predictors. In our case, we have fairly small number of
+predictors against observations. I suppose the problem is mostly due to
+multi-colinearity. This can be further consolidated by the common fact
+that a spam email usually has more than one of these identifying
+features. To tell the truth, I say it mostly because task b is about
+regularization. Couldn't find a safer guess. :)
 
-**Below is the equation for the predicted class probability, given the model coeﬀicients $\beta$ and the covariate vector $x$.**
-
+**Below is the equation for the predicted class probability, given the
+model coeﬀicients** $\beta$ and the covariate vector $x$.
 
 $$
 \hat{p}(y = 1 \mid x) = \frac{1}{1 + e^{-(-55.0 + 17.5 \times x_1 + 0 \times x_2+ 17.9 \times x_3 + 34.9 \times x_4 + 38.1 \times x_5)}} \\
-$$
-Where $x_1$ is MISSING_FROM; $x_2$ is FROM_ADDR_WS; $x_3$ is TVD_SPACE_RATIO; $x_4$ is LOTS_OF_MONEY; $x_5$ is T_FILL_THIS_FORM_SHORT. 
+$$ Where $x_1$ is MISSING_FROM; $x_2$ is FROM_ADDR_WS; $x_3$ is
+TVD_SPACE_RATIO; $x_4$ is LOTS_OF_MONEY; $x_5$ is
+T_FILL_THIS_FORM_SHORT.
 
-## Problem 1 Task b
+## Problem 8 Task b
 
-### Question 
+### Question
 
-Train a logistic regression model with Lasso regularisation. Find a regularisation coeﬀicient value that performs better than the unregularised version on the test data and has some regression coeﬀicients equal to zero. You can do this by trying various values; there is no need to be more sophisticated here.
-Report your parameters, the regression coeﬀicients, and the accuracies and perplexities on the testing data.
-Look at the predicted class probabilities for the unregularized regressor in Task a, and your regularized regressors in Task b. How do the distributions of the probabilities differ?
+Train a logistic regression model with Lasso regularisation. Find a
+regularisation coeﬀicient value that performs better than the
+unregularised version on the test data and has some regression
+coeﬀicients equal to zero. You can do this by trying various values;
+there is no need to be more sophisticated here. Report your parameters,
+the regression coeﬀicients, and the accuracies and perplexities on the
+testing data. Look at the predicted class probabilities for the
+unregularized regressor in Task a, and your regularized regressors in
+Task b. How do the distributions of the probabilities differ?
 
-### My answer 
+### My answer
 
-**I trained LASSO models with a series of lambda values using train dataset. ** Then I predicted the probability of SPAM by trying different lambda values including $\lambda$ = 0.0005, 0.05, 0.5 and 5. I selected these $\lambda$ values arbitrarily. The table below shows their parameters, accuracy (test set) and perplexity(test set). The first row also exhibits un-regularized model created in task a, for the purpose of comparing. I noticed that the lambda = 0.0005 model and un-regularized model have same level of testing accuracy, but the former outperforms in terms of much smaller perplexity value. Actually, the un-regularized model's perplexity indicates it is worse than random guess. So to answer the next part of question, I will visualize their probabilities
+**I trained LASSO models with a series of lambda values using train
+dataset.** Then I predicted the probability of SPAM by trying different
+lambda values including $\lambda$ = 0.0005, 0.05, 0.5 and 5. I selected
+these $\lambda$ values arbitrarily. The table below shows their
+parameters, accuracy (test set) and perplexity(test set). The first row
+also exhibits un-regularized model created in task a, for the purpose of
+comparing. I noticed that the lambda = 0.0005 model and un-regularized
+model have same level of testing accuracy, but the former outperforms in
+terms of much smaller perplexity value. Actually, the un-regularized
+model's perplexity indicates it is worse than random guess. So to answer
+the next part of question, I will visualize their probabilities
 
 ```{r}
 # extract train set x frame
@@ -441,15 +479,17 @@ rownames(parameter.table) <- NULL
 p1_taskb_table <- cbind(p1_taskb_table, parameter.table)
 ```
 
-
-
 ```{r}
 p1_taskb_table |> 
   mutate_if(is.numeric, ~round(.x,3)) |> 
   DT::datatable()
 ```
 
-**To analyze how the distributions of probabilities differ between the regularized and unregularized models, I visualized and overlaid their density plots. ** On each side of p>0.5 ($\hat{y} = 1$) and p<0.5$\hat{y} = 0$, the LASSO model with $\lambda = 0.0005$ shows more centered and higher peaks. 
+**To analyze how the distributions of probabilities differ between the
+regularized and unregularized models, I visualized and overlaid their
+density plots.** On each side of p\>0.5 ($\hat{y} = 1$) and
+p\<0.5$\hat{y} = 0$, the LASSO model with $\lambda = 0.0005$ shows more
+centered and higher peaks.
 
 ```{r}
 plot(density(prediction.l00005), col = "blue", cex.main = 0.9, main = "Distribution of probability non-regularized model vs Lasso model (lambda = 0.0005)", xlab = "Predicted probability")
@@ -463,10 +503,161 @@ legend("topright", c("Non-regularized model", "Lasso model"),
        col =c("blue","red"), cex =0.7, lty=1)
 ```
 
+# Problem 9
+
+[6 points] Objective: generative Bayes classifier In this problem, you
+will study the quadratic discriminant analysis (QDA) classifier.
+Consider a simple case with two classes and only one feature ($K$ = 2
+and $p$ = 1).
+
+## Question Task a
+
+Prove that the QDA classifier is not linear if the class-specific
+variances differ (𝜎12 ≠ 𝜎2). Hint: This problem is from the textbook
+(Problem 3, page 189). Please see the discussion in the textbook for
+hints and guidance. For this problem, you should follow the arguments
+laid out in Sect. 4.4.1 of the textbook, but without assuming that 𝜎12 =
+𝜎2.
+
+## My answer
+
+In QDA, the decision boundary between two classes is determined by the
+point where their respective probability distributions are equal. For a
+single feature $x$ and two classes, the class-conditional densities for
+a normal distribution are given by:
+
+$$ 
+p(x | y = k) = \frac{1}{\sqrt{2\pi\sigma_k^2}} \exp\left(-\frac{(x - \mu_k)^2}{2\sigma_k^2}\right) 
+$$
+
+where \$ k \$ is the class index (1 or 2), \$ \mu\_k \$ is the mean of
+class \$ k \$, and \$ \sigma\_k\^2 \$ is the variance of class \$ k \$.
+
+\\section\*{Decision Rule:}
+
+The QDA classifier assigns a point \$ x \$ to the class for which \$ p(x
+\| y = k)\$ is higher. The decision boundary is where
+$$ p(x | y = 1) = p(x | y = 2) $$
+
+Setting the class-conditional densities equal to each other, we get:
+
+$$ \frac{1}{\sqrt{2\pi\sigma_1^2}} \exp\left(-\frac{(x - \mu_1)^2}{2\sigma_1^2}\right) = \frac{1}{\sqrt{2\pi\sigma_2^2}} \exp\left(-\frac{(x - \mu_2)^2}{2\sigma_2^2}\right) $$
+
+Taking the logarithm of both sides simplifies this to:
+
+$$ -\frac{(x - \mu_1)^2}{2\sigma_1^2} + \log(\sigma_2) = -\frac{(x - \mu_2)^2}{2\sigma_2^2} + \log(\sigma_1) $$
+
+Expanding and rearranging terms, we get a quadratic equation in \$ x \$:
+
+$$ a x^2 + b x + c = 0 $$
+
+where \$ a \$, \$ b \$, and \$ c \$ are coefficients that depend on \$
+\mu\_1 \$, \$\mu\_2 \$, \$\sigma\_1\^2 \$, and \$ \sigma\_2\^2 \$.
+
+If \$ \sigma\_1\^2 = \sigma\_2\^2 \$, the \$ x\^2 \$ terms cancel out,
+and the decision boundary becomes linear. However, if \$ \sigma\_1\^2
+\neq \sigma\_2\^2 \$, the \$ x\^2 \$ term remains, making the decision
+boundary quadratic, hence non-linear.
+
+# Problem 10
+
+Objective: naive Bayes classifier
+
+```{r}
+library(magick)
+palmer <- image_read("https://const-ae.name/img/penguins_vs.png") |>
+  image_convert("svg")
+```
+
+`r palmer`
+
+In this problem, you will study the Palmer penguins by building your own
+Naive Bayes classifier.
+
+Artwork by @allison_horst
+
+• Dataset description.
+
+• Use penguins_train.csv as your training data and penguins_test.csv as
+your testing data.
+
+• Binary classification task: classify the penguin species as $y \in$
+{Adelie, notAdelie} (not Adelie combining Gentoo and Chinstrap species)
+based on four morphological and weight measurements of the individual
+penguins, denoted by $x=(x_1, x_2, x_3, x_4)^T \in \mathbb{R}_4$
+
+Naive Bayes (NB) classifier
+
+Your task is to build your own NB classifier; you should not use a
+ready-made classifier from a library. However, you do not need to create
+a generic classifier (such as naive Bayes in the R e1071 library); it is
+enough that your classifier works for this particular task.
+
+The idea of NB is that the dimensions are conditionally independent,
+given the class. Each class conditional feature distribution $p(x_i|y)$
+is assumed to originate from an independent Gaussian distribution with
+its mean $\mu$ and variance $\sigma^2$ for $i = 1,2,3,4$
+
+## Problem 10 Task a
+
+### Question
+
+Compute and report each attribute's means and standard deviations separately in the training set for both classes. 
+
+Estimate and report the class probabilities using Laplace smoothing with a pseudocount of 1 on the training set.
+(You should produce a total of 18 numbers from this task.)
+
+
+```{r}
+# read train set
+train <- 
+  read_csv(file.path(here(), "Exercise Sets-20231117", "E2", "data_E2", "penguins_train.csv"))
+# read test set
+test <- 
+  read_csv(file.path(here(), "Exercise Sets-20231117", "E2", "data_E2", "penguins_test.csv"))
+```
+
+```{r}
+train$species |> table()
+sum(train$species == "Adelie")
+nrow(train)
+
+```
+
+### My answer
+
+Continuous variable will be described at $m\pm sd$. Categorical
+variables will be described as number of Adelie (percentage)
+
+Penguins in the data have bill length of
+`r mean(train$bill_length_mm) |> round(3)` $\pm$
+`r sd(train$bill_length_mm)|> round(3)` $mm$; have bill depth of
+`r mean(train$bill_depth_mm) |> round(3)` $\pm$
+`r sd(train$bill_depth_mm)|> round(3)` $mm$; have flipper length of
+`r mean(train$flipper_length_mm) |> round(3)` $\pm$
+`r sd(train$flipper_length_mm)|> round(3)` $mm$; have body mass of
+`r mean(train$body_mass_g) |> round(3)` $\pm$
+`r sd(train$body_mass_g)|> round(3)` $g$; The number of Adelie penguins
+are `r paste0(sum(train$species == "Adelie"),"(" ,sum((train$species == "Adelie")/nrow(train)*100) |> round(1), "%)")`
+
+```{r}
+# assign values 
+pseudocount <- 1
+n_trial <- nrow(train)
+class <- table(train$species)
+n_dimension <- class |> length()
+# calculate 
+class_probs <- (class + pseudocount) / (n_trial + n_dimension)
+
+```
 
 
 
+```{r}
+total_count <- nrow(train)
+class_counts <- table(train$species)
+class_probs <- (class_counts + 1) / (total_count + length(class_counts))
+class_probs[[1]]
+```
 
-
-
-
+Class probabilities of `r names(class)[1]` is `r class_probs[[1]] |> round(3)`; and class probabilities of `r names(class)[2]` is `r class_probs[[2]] |> round(3)`
