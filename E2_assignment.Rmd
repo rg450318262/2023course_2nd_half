@@ -1,0 +1,472 @@
+---
+title: "E2 assignment"
+output: 
+   html_document:
+     code_folding: hide
+date: "2023-11-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, warning = T, message = T)
+```
+
+# Problem 8
+
+Performance measures
+In this exercise set, you will train probabilistic classifiers which estimate $\hat{p}(y | x)$): the probability of class 𝑦 given the covariate vector x. Two commonly used performance measures for probabilistic classifiers are accuracy and perplexity. We use the following notation:
+
+• $y_i \in \{0,1\}$: the true class of point 𝑖.
+
+• $\hat{p} = \hat{p}(y = 1 | x)$: the estimated probability for the 𝑖th point in a dataset of size 𝑛 being spam.
+
+• $\hat{y}$: the predicted class for point i which is $\hat{y} = 1$ if $\hat{p} \geq 0.5$ and $\hat{y} = 0$.We define the accuracy on a dataset of n items as follows:
+
+$$
+accuracy = \Sigma_{i=1}^{n}I(y = \hat{y_i})/n
+$$
+
+$$
+perplexity = \exp(-\Sigma_{i=1}^{n}log\hat{p}(y = y_i|x_i)/n)
+$$
+
+Perplexity is a transformation of the likelihood (perplexity = exp(−loglikelihood/𝑛)), which may be the most commonly used performance measure on probabilistic classifiers. Example values are perplexity = 1 for a perfect classifier, which always predicts the probability of one to an actual class, and perplexity = 2 for coin flipping, which has a predicted class probabilit $\hat{p} = 1/2$.
+
+## Problem 1 Task a
+
+### Question (Problem 1 Task a)
+
+Using one-hot encoding for $y_i$, train a logistic regression model without Lasso or Ridge regularisation on the training data. Then:
+(i) Report the model coeﬀicients.
+(ii) Compute and report the accuracy and perplexity on the training and testing data. Make sure that you
+use no regularisation. Notice that you may get warnings about convergence; why?
+(iii) Write down the equation for the predicted class probability, given the model coeﬀicients $\beta$ and the
+covariate vector $x$.
+
+### My answer (Problem 1 Task a)
+
+
+```{r}
+
+library(tidyverse)
+library(here)
+
+#read data
+train.set <- 
+  read_csv(file.path(here(), "Exercise Sets-20231117", "E2", "data_E2", "spam_train.csv"))
+
+test.set <- 
+  read_csv(file.path(here(), "Exercise Sets-20231117", "E2", "data_E2", "spam_test.csv"))
+```
+
+**The table below shows the coefficients for the model without regularization.**
+
+```{r}
+train.set |> map(is.na) |> map(sum)
+test.set |> map(is.na) |> map(sum)
+```
+
+
+```{r waning = T, message=T}
+#load packages
+library(broom)
+library(kableExtra)
+library(glmnet)
+#train model on train set
+fit <- glm(SPAM ~ ., data = train.set, family = binomial(link ="logit"))
+
+#check output (model coefficients)
+coef(fit) |> 
+  tidy() |> 
+  rename(
+    variable = names,
+    coefficient = x) |>
+  mutate_if(is.numeric, ~round(.x, 3)) |> 
+  DT::datatable()
+#caption = "Fig P1_Task_a_1. Model coefficient on train set"
+
+```
+
+**The table below shows the accuracy on training and testing set.**
+
+```{r}
+# function to derive accuracy
+
+get_accuracy <- 
+  function(fit.train, test.set, true.y){
+    
+    # Train accuracy 
+  
+    ##get sample size
+    n_train <-  nrow(fit.train$model[1]) #1 is list of true y 
+    ##get true y
+    y_train <- fit.train$model[1]
+    ##get predicted probability
+    prob_train <- fit.train$fitted.values
+    ## assign probability to class(1/0)
+    class_train <- ifelse(prob_train>=0.5, 1, 0)
+    ## indicator function (0/1) for test
+    indicator_train <- ifelse(class_train == y_train, 1, 0)
+    ##accuracy
+    accuracy_train = sum(indicator_train/n_train)
+    
+    # Test accuracy
+    
+    ## get sample size for test set
+    n_test <- nrow(test.set)
+    ## get true y for test set
+    y_test <- test.set[,true.y]
+    ## get predicted probability 
+    prob_test <- predict(fit.train, test.set, type = "response")
+    ## assign probability to class(1/0)
+    class_test <- if_else(prob_test>=0.5, 1, 0)
+    ## indicator function (0/1) for test
+    indicator_test <- if_else(class_test == y_test, 1, 0)
+    ## accuracy for test
+    accuracy_test <- sum(indicator_test/n_test)
+    
+    ##print results
+    output <- data.frame(accuracy_train = accuracy_train, accuracy_test =accuracy_test)
+    print(output)
+  }
+
+get_accuracy(fit, test.set, "SPAM") |> 
+  DT::datatable()
+baseline_test_accuracy<- get_accuracy(fit, test.set, "SPAM")[1,2]
+```
+
+**The table below shows the perplexity on training and testing set.**
+
+```{r}
+# function to derive perplexity
+
+get_perplexity <-  #true.y is the variable name of y in test.set
+  function(fit.train, test.set, true.y){
+    
+    # Train perplexity 
+  
+    ##get sample size
+    n_train <-  nrow(fit.train$model[1]) #1 is list of true y 
+    ##get true y
+    y_train <- fit.train$model[1]
+    ##get predicted probability
+    prob_train <- fit.train$fitted.values
+    ##Indicator function (0/1)
+    indicator_train <- if_else(prob_train>=0.5, 1, 0)
+    ##log likelihood for train
+    log_likelihood_train <- sum(y_train*log(prob_train) + (1-y_train)*log(1-prob_train))
+    ##perplexity for train
+    perplexity_train <- exp(-log_likelihood_train/n_train)
+    
+    
+    # Test perplexity
+
+    ## get sample size for test set
+    n_test <- nrow(test.set)
+    ## get true y for test set
+    y_test <- test.set[, true.y] 
+    ## get predicted probability 
+    prob_test <- predict(fit.train, test.set, type = "response")
+    ## og likelihood for test
+     log_likelihood_test <- sum(y_test*log(prob_test) + (1-y_test)*log(1-prob_test))
+    ## perplexity for test
+    perplexity_test<- exp(-log_likelihood_test/n_test)
+    
+    ##print results
+    output <- data.frame(perplexity_train = perplexity_train, perplexity_test =perplexity_test)
+    print(output)
+  }
+
+# generate the table 
+p1.task.a.table.1 <- get_perplexity(fit, test.set, "SPAM") |>
+  mutate_if(is.numeric, ~round(.x,3))
+p1.task.a.table.1|> 
+  DT::datatable()
+
+#get values to report
+baseline_test_perplexity <- get_perplexity(fit, test.set, "SPAM")[1,2]
+
+```
+
+**Why don't converge?** The warning of convergence can be the result of overly complex model, multi-colinearity and too few observations in terms of predictors. In our case, we have fairly small number of predictors against observations. I suppose the problem is mostly due to multi-colinearity. This can be further consolidated by the common fact that a spam email usually has more than one of these identifying features. To tell the truth, I say it mostly because task b is about regularization. Couldn't find a safer guess. :) 
+
+**Below is the equation for the predicted class probability, given the model coeﬀicients $\beta$ and the covariate vector $x$.**
+
+
+$$
+\hat{p}(y = 1 \mid x) = \frac{1}{1 + e^{-(-55.0 + 17.5 \times x_1 + 0 \times x_2+ 17.9 \times x_3 + 34.9 \times x_4 + 38.1 \times x_5)}} \\
+$$
+Where $x_1$ is MISSING_FROM; $x_2$ is FROM_ADDR_WS; $x_3$ is TVD_SPACE_RATIO; $x_4$ is LOTS_OF_MONEY; $x_5$ is T_FILL_THIS_FORM_SHORT. 
+
+## Problem 1 Task b
+
+### Question 
+
+Train a logistic regression model with Lasso regularisation. Find a regularisation coeﬀicient value that performs better than the unregularised version on the test data and has some regression coeﬀicients equal to zero. You can do this by trying various values; there is no need to be more sophisticated here.
+Report your parameters, the regression coeﬀicients, and the accuracies and perplexities on the testing data.
+Look at the predicted class probabilities for the unregularized regressor in Task a, and your regularized regressors in Task b. How do the distributions of the probabilities differ?
+
+### My answer 
+
+**I trained LASSO models with a series of lambda values using train dataset. ** Then I predicted the probability of SPAM by trying different lambda values including $\lambda$ = 0.0005, 0.05, 0.5 and 5. I selected these $\lambda$ values arbitrarily. The table below shows their parameters, accuracy (test set) and perplexity(test set). The first row also exhibits un-regularized model created in task a, for the purpose of comparing. I noticed that the lambda = 0.0005 model and un-regularized model have same level of testing accuracy, but the former outperforms in terms of much smaller perplexity value. Actually, the un-regularized model's perplexity indicates it is worse than random guess. So to answer the next part of question, I will visualize their probabilities
+
+```{r}
+# extract train set x frame
+train.set.x <- 
+  train.set[,which(colnames(train.set) != "SPAM")] |> 
+  as.matrix()
+# extract train set y vedtor
+train.set.y <- 
+  train.set$SPAM 
+
+# extract test set x frame
+test.set.x <- 
+  test.set[,which(colnames(train.set) != "SPAM")] |> 
+  as.matrix()
+# extract est set y vedtor
+test.set.y <- 
+  test.set$SPAM 
+
+#define lambada values to test out
+grid <- 10^seq(10, -2, length = 100)
+
+#fit a model with lasso regularization
+fit.regular <- 
+  glmnet(
+    train.set.x, 
+    train.set.y, 
+    alpha = 1, #lasso
+    lambda = grid,  
+    family = "binomial"
+    )
+```
+
+```{r}
+#try various lambda values
+
+## try lambda = 0
+prediction.l0 <-  
+  predict(
+    fit.regular, 
+    s = 0, 
+    newx = test.set.x,
+    type = "response"
+    )
+
+## try lambda = 0.0005
+prediction.l00005 <-  
+  predict(
+    fit.regular, 
+    s = 0.0005, 
+    newx = test.set.x,
+    type = "response"
+    )
+
+## try lambda = 0.05
+prediction.l005 <-  
+  predict(
+    fit.regular, 
+    s = 0.05, 
+    newx = test.set.x,
+    type = "response"
+    )
+## try lambda = 0.5
+prediction.l05<-  
+  predict(
+    fit.regular, 
+    s = 0.5, 
+    newx = test.set.x,
+    type = "response"
+  )
+## try lambda = 5
+prediction.l5<-  
+  predict(
+    fit.regular, 
+    s = 5, 
+    newx= test.set.x,
+    type = "response"
+    )
+
+prd.lm.s005 <-  
+  predict(
+    fit.regular, 
+    s = 0.000026, 
+    newx= test.set.x,
+    type = "response"
+    )
+```
+
+```{r}
+# obtain accuracy and perplexity for the models created
+
+#lambda = 0
+## accuracy
+predicted_classes <- ifelse(prediction.l0 > 0.5, 1, 0)
+accuracy_test_l0 <- mean(predicted_classes == test.set.y)
+## perplexity 
+perplexity_test_l0 <- 
+  exp(-mean(ifelse(test.set.y == 1, log(prediction.l0), log(1 - prediction.l0))))
+## Coefficient
+coef.l0 <-  
+  predict(
+    fit.regular, 
+    s = 0, 
+    newx = test.set.x,
+    type = "coefficient"
+    )
+#lambda = 0.0005
+## accuracy
+predicted_classes <- ifelse(prediction.l00005 > 0.5, 1, 0)
+accuracy_test_l00005 <- mean(predicted_classes == test.set.y)
+## perplexity 
+perplexity_test_l00005 <- 
+  exp(-mean(ifelse(test.set.y == 1, log(prediction.l00005), log(1 - prediction.l00005))))
+## Coefficient
+coef.l00005 <-  
+  predict(
+    fit.regular, 
+    s = 0.0005, 
+    newx = test.set.x,
+    type = "coefficient"
+    )
+
+#lambda = 0.05
+##accuracy
+predicted_classes <- ifelse(prediction.l005 > 0.5, 1, 0)
+accuracy_test_l005 <- mean(predicted_classes == test.set.y)
+## perplexity 
+perplexity_test_l005 <- 
+  exp(-mean(ifelse(test.set.y == 1, log(prediction.l005), log(1 - prediction.l005))))
+## Coefficient
+coef.l005 <-  
+  predict(
+    fit.regular, 
+    s = 0.05, 
+    newx = test.set.x,
+    type = "coefficient"
+    )
+#lambda = 0.5
+##accuracy
+predicted_classes <- ifelse(prediction.l05 > 0.5, 1, 0)
+accuracy_test_l05 <- mean(predicted_classes == test.set.y)
+## perplexity 
+perplexity_test_l05 <- 
+  exp(-mean(ifelse(test.set.y == 1, log(prediction.l05), log(1 - prediction.l05))))
+## Coefficient
+coef.l05 <-  
+  predict(
+    fit.regular, 
+    s = 0.5, 
+    newx = test.set.x,
+    type = "coefficient"
+    )
+
+#lambda = 5
+## accuracy
+predicted_classes<- ifelse(prediction.l5 > 0.5, 1, 0)
+accuracy_test_l5 <- mean(predicted_classes == test.set.y)
+## perplexity 
+perplexity_test_l5 <- 
+  exp(-mean(ifelse(test.set.y == 1, log(prediction.l5), log(1 - prediction.l5))))
+## Coefficient
+coef.l5 <-  
+  predict(
+    fit.regular, 
+    s = 5, 
+    newx = test.set.x,
+    type = "coefficient"
+    )
+
+coefficient.l00005 <-  
+  predict(
+    fit.regular, 
+    s = 0.0005, 
+    newx = test.set.x,
+    type = "coefficient"
+    )
+```
+
+```{r}
+p1_taskb_table <- 
+  tibble(
+    model = c(
+      "no regularization",
+      #"lambda = 0",
+      "lambda = 0.0005",
+      "lambda = 0.05",
+      "lambda = 0.5",
+      "lambda = 5"),
+    `accuracy(test set)` = c(
+      baseline_test_accuracy, 
+      #accuracy_test_l0, 
+      accuracy_test_l00005,
+      accuracy_test_l005,
+      accuracy_test_l05,
+      accuracy_test_l5
+      ), 
+    `perplexity(test set)` = c(
+      baseline_test_perplexity, 
+      #perplexity_test_l0, 
+      perplexity_test_l00005,
+      perplexity_test_l005,
+      perplexity_test_l05,
+      perplexity_test_l5
+      )
+  )
+
+p1_taskb_table
+
+
+
+#coef.l0.parameters <- coef.l0 |> as.matrix() |> data.frame() 
+coef.l00005.parameters <- coef.l00005 |> as.matrix() |> data.frame() 
+coef.l005.parameters <- coef.l005 |> as.matrix() |> data.frame() 
+coef.l05.parameters <- coef.l05 |> as.matrix() |> data.frame() 
+coef.l5.parameters <- coef.l5 |> as.matrix() |> data.frame() 
+baseline <- fit$coefficients |> data.frame()
+parameters <- 
+  cbind(
+    baseline,
+    #coef.l0.parameters,
+    coef.l00005.parameters,
+    coef.l005.parameters, 
+    coef.l05.parameters,
+    coef.l5.parameters
+    ) 
+
+colnames(parameters) <- c(
+  #"l0", 
+  "l00005", "l005", "l05", "l5")
+parameter.table <- parameters |> t() |> data.frame()
+rownames(parameter.table) <- NULL
+p1_taskb_table <- cbind(p1_taskb_table, parameter.table)
+```
+
+
+
+```{r}
+p1_taskb_table |> 
+  mutate_if(is.numeric, ~round(.x,3)) |> 
+  DT::datatable()
+```
+
+**To analyze how the distributions of probabilities differ between the regularized and unregularized models, I visualized and overlaid their density plots. ** On each side of p>0.5 ($\hat{y} = 1$) and p<0.5$\hat{y} = 0$, the LASSO model with $\lambda = 0.0005$ shows more centered and higher peaks. 
+
+```{r}
+plot(density(prediction.l00005), col = "blue", cex.main = 0.9, main = "Distribution of probability non-regularized model vs Lasso model (lambda = 0.0005)", xlab = "Predicted probability")
+lines(density(fit$fitted.values), col = "red")
+abline(v = 0.5, col = "black")
+text(0.7, 2, "<-Classifiction cut off")
+text(-0.15, 2.7, "predicted_y = 0", cex = 0.8)
+text(0.65, 2.7, "predicted_y = 1", cex = 0.8)
+
+legend("topright", c("Non-regularized model", "Lasso model"), 
+       col =c("blue","red"), cex =0.7, lty=1)
+```
+
+
+
+
+
+
+
+
