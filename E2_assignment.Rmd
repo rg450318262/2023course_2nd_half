@@ -657,7 +657,19 @@ class_probs <- (class + pseudocount) / (n_trial + n_dimension)
 total_count <- nrow(train)
 class_counts <- table(train$species)
 class_probs <- (class_counts + 1) / (total_count + length(class_counts))
-class_probs[[1]]
 ```
 
 Class probabilities of `r names(class)[1]` is `r class_probs[[1]] |> round(3)`; and class probabilities of `r names(class)[2]` is `r class_probs[[2]] |> round(3)`
+
+## Problem 10 Task b
+
+### Question
+
+Now, you can find the class-specific expressions for $p(x|y)$ needed by the NB classifier. Remember that according to NB assumption, the dimensions are independent, and hence, you can represent the class-specific  $p(x|y)$  likelihoods as products of 4 1-dimensional normal distributions.
+Write down the formula needed to compute the posterior probability of the class being Adelie $\hat{p}(y = Adelie | x)$) as a function of the four measurements in x and the statistics (means, standard deviations, class probabilities) you computed in the task a above.
+
+### My answer
+
+
+
+
