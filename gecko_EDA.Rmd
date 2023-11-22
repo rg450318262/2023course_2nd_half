@@ -204,6 +204,50 @@ gecko_num[,-1] |>
   theme_bw()
 ```
 
+## Log/exp transformation for non-normal data
+
+### NumOfConf and MW
+
+The distribution of `NumOfConf` is skewed.
+
+```{r}
+NumOfConf.dist.a <- 
+  gecko_num |> 
+  ggplot(aes(x = NumOfConf^0.3)) +
+  geom_qq()
+
+NumOfConf.dist.b <- 
+  gecko_num |> 
+  ggplot(aes(sample = NumOfConf^0.3)) +
+  geom_qq()
+```
+
+```{r}
+gecko_num <- 
+  gecko_num |> 
+  mutate(NumOfConf_exp = NumOfConf^0.3)
+```
+
+```{r}
+gecko_num |> 
+  ggplot(aes(sample = NumOfConf^0.3)) +
+  geom_qq()
+```
+
+
+### check
+
+```{r}
+gecko_num |> 
+  ggplot(aes(x = NumOfConf |> log()))+
+  geom_histogram(binwidth = 1)
+
+```
+
+
+
+
+
 ```{r}
 gecko$peroxide |> table()
 var_label(gecko$hydroperoxide)
@@ -226,16 +270,30 @@ gecko_num_scaled <- scale(gecko_num[,-1]) |> data.frame()
 gecko_num_scaled |> 
   mutate(id = gecko_num$id) |> 
   select(id, everything())
+```
 
+```{r}
 gecko_num_scaled |> 
   filter(abs(MW) > 3.29) |> 
   select (MW)
 ```
 
+MW; NumOfAtoms; NumOfConf; NumOfO
 
+```{r}
+gecko_num_scaled |>
+  select(
+    MW,
+    NumOfAtoms,
+    NumOfConf,
+    NumOfO
+  ) |> 
+  apply(2, function(x)sum(abs(x)>3.29))
+```
 
+```{r}
 
-
+```
 
 
 
