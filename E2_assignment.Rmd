@@ -602,11 +602,12 @@ its mean $\mu$ and variance $\sigma^2$ for $i = 1,2,3,4$
 
 ### Question
 
-Compute and report each attribute's means and standard deviations separately in the training set for both classes. 
+Compute and report each attribute's means and standard deviations
+separately in the training set for both classes.
 
-Estimate and report the class probabilities using Laplace smoothing with a pseudocount of 1 on the training set.
-(You should produce a total of 18 numbers from this task.)
-
+Estimate and report the class probabilities using Laplace smoothing with
+a pseudocount of 1 on the training set. (You should produce a total of
+18 numbers from this task.)
 
 ```{r}
 # read train set
@@ -618,27 +619,45 @@ test <-
 ```
 
 ```{r}
-train$species |> table()
-sum(train$species == "Adelie")
-nrow(train)
+bill_length_mean_Adelie <- mean(train |> filter(species == "Adelie") |> select(bill_length_mm) |> pull())
+bill_length_sd_Adelie <- sd(train |> filter(species == "Adelie") |> select(bill_length_mm) |> pull())
+bill_depth_mean_Adelie <- mean(train |> filter(species == "Adelie") |> select(bill_depth_mm) |> pull())
+bill_depth_sd_Adelie <- sd(train |> filter(species == "Adelie") |> select(bill_depth_mm) |> pull())
+flipper_length_mean_Adelie <- mean(train |> filter(species == "Adelie") |> select(flipper_length_mm) |> pull())
+flipper_length_sd_Adelie <- sd(train |> filter(species == "Adelie") |> select(flipper_length_mm) |> pull())
+body_mass_mean_Adelie <- mean(train |> filter(species == "Adelie") |> select(body_mass_g) |> pull())
+body_mass_sd_Adelie <- sd(train |> filter(species == "Adelie") |> select(body_mass_g) |> pull())
 
+bill_length_mean_notAdelie <- mean(train |> filter(species == "notAdelie") |> select(bill_length_mm) |> pull())
+bill_length_sd_notAdelie <- sd(train |> filter(species == "Adelie") |> select(bill_length_mm) |> pull())
+bill_depth_mean_notAdelie <- mean(train |> filter(species == "Adelie") |> select(bill_depth_mm) |> pull())
+bill_depth_sd_notAdelie <- sd(train |> filter(species == "Adelie") |> select(bill_depth_mm) |> pull())
+flipper_length_mean_notAdelie <- mean(train |> filter(species == "Adelie") |> select(flipper_length_mm) |> pull())
+flipper_length_sd_notAdelie <- sd(train |> filter(species == "Adelie") |> select(flipper_length_mm) |> pull())
+body_mass_mean_notAdelie <- mean(train |> filter(species == "Adelie") |> select(body_mass_g) |> pull())
+body_mass_sd_notAdelie <- sd(train |> filter(species == "Adelie") |> select(body_mass_g) |> pull())
 ```
 
 ### My answer
 
-Continuous variable will be described at $m\pm sd$. Categorical
-variables will be described as number of Adelie (percentage)
+Each attribute’s means and standard deviations separately in the training set for both classes are as follows:
 
-Penguins in the data have bill length of
-`r mean(train$bill_length_mm) |> round(3)` $\pm$
-`r sd(train$bill_length_mm)|> round(3)` $mm$; have bill depth of
-`r mean(train$bill_depth_mm) |> round(3)` $\pm$
-`r sd(train$bill_depth_mm)|> round(3)` $mm$; have flipper length of
-`r mean(train$flipper_length_mm) |> round(3)` $\pm$
-`r sd(train$flipper_length_mm)|> round(3)` $mm$; have body mass of
-`r mean(train$body_mass_g) |> round(3)` $\pm$
-`r sd(train$body_mass_g)|> round(3)` $g$; The number of Adelie penguins
-are `r paste0(sum(train$species == "Adelie"),"(" ,sum((train$species == "Adelie")/nrow(train)*100) |> round(1), "%)")`
+```{r}
+train |> 
+  group_by(species) |> 
+  summarise(
+    mean_bill_length_mm = mean(bill_length_mm),
+    sd_bill_length_mm = sd(bill_length_mm),
+    mean_bill_depth_mean_mm = mean(bill_depth_mm),
+    sd_bill_depth_mean_mm = sd(bill_depth_mm),
+    mean_flipper_length_mm = mean(flipper_length_mm),
+    sd_flipper_length_mm = sd(flipper_length_mm),
+    mean_body_mass_g = mean(body_mass_g),
+    sd_body_mass_g = sd(body_mass_g)
+  )
+```
+
+The class probabilities using Laplace smoothing with a pseudocount of 1 on the training set are as follows:
 
 ```{r}
 # assign values 
@@ -648,10 +667,7 @@ class <- table(train$species)
 n_dimension <- class |> length()
 # calculate 
 class_probs <- (class + pseudocount) / (n_trial + n_dimension)
-
 ```
-
-
 
 ```{r}
 total_count <- nrow(train)
@@ -659,17 +675,391 @@ class_counts <- table(train$species)
 class_probs <- (class_counts + 1) / (total_count + length(class_counts))
 ```
 
-Class probabilities of `r names(class)[1]` is `r class_probs[[1]] |> round(3)`; and class probabilities of `r names(class)[2]` is `r class_probs[[2]] |> round(3)`
+Class probabilities of `r names(class)[1]` is
+`r class_probs[[1]] |> round(3)`; and class probabilities of
+`r names(class)[2]` is `r class_probs[[2]] |> round(3)`
 
 ## Problem 10 Task b
 
 ### Question
+ 
+Now, you can find the class-specific expressions for $p(x|y)$ needed by the NB classifier. Remember that according to NB assumption, the dimensions are independent, and hence, you can represent the class-specific $p(x|y)$ likelihoods as products of 4 1-dimensional normal distributions. Write down the formula needed to compute the posterior probability of the class being Adelie $\hat{p}(y = Adelie | x)$) as a function of the four measurements in x and the statistics (means, standard deviations, class probabilities) you computed in the task a above.
 
-Now, you can find the class-specific expressions for $p(x|y)$ needed by the NB classifier. Remember that according to NB assumption, the dimensions are independent, and hence, you can represent the class-specific  $p(x|y)$  likelihoods as products of 4 1-dimensional normal distributions.
-Write down the formula needed to compute the posterior probability of the class being Adelie $\hat{p}(y = Adelie | x)$) as a function of the four measurements in x and the statistics (means, standard deviations, class probabilities) you computed in the task a above.
+### My answer
+
+The class-specific likelihood $p(x|y)$ is represented as the product of four 1-dimensional normal distributions, one for each feature.
+
+Given $p(x_i|y)$ follows a normal distribution with mean $\mu_{yi}$ and standard deviation $\sigma_{yi}$ for feature $i$ and and class $y$.
+
+Class probability $p(y)$ are estimated from the data.
+
+$x = (x_1, x_2, x_3, x_4)^T$ are four measurements.
+
+The posterior probability $\hat{p}(y = Adelie| x)$ is calculated as follows:
+
+$$
+\hat{p}(y = \text{Adelie} | x) = \frac{p(x | y = \text{Adelie}) \cdot p(y = \text{Adelie})}{p(x)}
+$$
+
+Where, 
+
+$$
+p(x | y = \text{Adelie}) = \prod_{i=1}^{4} \frac{1}{\sqrt{2\pi\sigma_{\text{Adelie},i}^2}} \exp\left(-\frac{(x_i - \mu_{\text{Adelie},i})^2}{2\sigma_{\text{Adelie},i}^2}\right)
+$$
+
+Note that $\mu$ and $\sigma$ for each i have been calculated in the previous question.
+
+And,
+
+$p(y = \text{Adelie})$ has been calculated using Laplace smoothing in the previous question.
+
+And, 
+
+$$
+p(x) = \left( \prod_{j=1}^{4} \frac{1}{\sqrt{2\pi\sigma_{\text{Adelie},j}^2}} e^{-\frac{(x_j - \mu_{\text{Adelie},j})^2}{2\sigma_{\text{Adelie},j}^2}} \right) p(\text{Adelie}) + \left( \prod_{j=1}^{4} \frac{1}{\sqrt{2\pi\sigma_{\text{notAdelie},j}^2}} e^{-\frac{(x_j - \mu_{\text{notAdelie},j})^2}{2\sigma_{\text{notAdelie},j}^2}} \right) p(\text{notAdelie})
+
+$$
+Note that in our case, it is possible to assign class without calculating this $p(x)$ because it's the same for both classes and thus use it as denominator will not change the order of size for the nominators. 
+
+## Problem 10 Task c
+
+### Question
+
+Using the formula you derived in Task b, compute and report your classifier’s classification accuracy on the test set. Additionally, calculate and report the probabilities $\hat{p}( y = Adelie| x)$ for the three first penguins in the test set.
+
+```{r}
+#a function to calculate posterior for the row that is specified
+calc_posterior_adelie <- function(x, row) {
+  #likelihood_nominator_product <- 1
+  likelihood_denominator_product_y1 <- 1
+  likelihood_denominator_product_y2 <- 1
+  for (i in 1:4) {
+    # Calculate the likelihood for each feature and multiply them together
+    # likelihood_nominator_product <- likelihood_nominator_product * 
+    #                       dnorm(
+    #                         x[row, i] |> pull(), 
+    #                         mean(x |> filter(species == "Adelie") |> select(i) |> pull()), 
+    #                         sd(x |> filter(species == "Adelie") |> select(i) |> pull())
+    #                         )
+    
+    likelihood_denominator_product_y1 <- likelihood_denominator_product_y1*
+      dnorm(x[row, i] |> pull(), 
+            mean(train |> filter(species == "Adelie") |> select(i) |> pull()), 
+            sd(train |> filter(species == "Adelie") |> select(i) |> pull())
+                        )
+    
+    likelihood_denominator_product_y2 <- likelihood_denominator_product_y2*
+      dnorm(x[row, i] |> pull(),
+            mean(train |> filter(species == "notAdelie") |> select(i) |> pull()), 
+            sd(train |> filter(species == "notAdelie") |> select(i) |> pull())
+    )
+  }
+  
+
+  p_x <- likelihood_denominator_product_y1 * class_probs[[1]] + likelihood_denominator_product_y2 * class_probs[[2]]
+  # Calculate the  posterior probability
+  posterior <- (likelihood_denominator_product_y1 * class_probs[[1]])/p_x
+  return(posterior)  # Note: This is unnormalized
+}
+
+# predict testing set
+test$predicted_prob <- sapply(1:nrow(test), function(i)calc_posterior_adelie(test, i) |> round(3))
+test$predicted_class <- sapply(1:nrow(test), function(i) {
+  x <- test
+  posterior_prob_adelie <- calc_posterior_adelie(test, i)
+  if (posterior_prob_adelie >= 0.5) "Adelie" else "notAdelie"
+})
+```
+
+
+
+```{r}
+accuracy <- mean(test$predicted_class == test$species)
+```
+
+My classifier’s classification accuracy on the test set is `r accuracy``
+
+The probabilities $\hat{p}(y = \text{Adelie} | x)$ for the three first penguins are as follows:
+
+```{r}
+test[1:3,c(5:7)]
+```
+
+# Problem 11
+
+Objective: Understanding discriminative vs generative learning.
+
+Download the reference below. You do not need to read the full paper or understand all the details! Instead, try to find the answers to the following questions.
+
+Reference: Ng, Jordan (2001) On discriminative vs. generative classifiers: A comparison of logistic regres- sion and naive Bayes. NIPS. http://papers.nips.cc/paper/2020-on-discriminative-vs-generative-classifiers- a-comparison-of-logistic-regression-and-naive-bayes.pdf
+
+## Problem 11 Task a
+
+### Question
+
+Read the Abstract and Introduction (Sect. 1). According to the authors, is discriminative learning better than generative learning? Justify your answer.
+
+### My answer
+
+## Problem 11 Task b
+
+### Question
+
+By a “parametric family of probabilistic models”, the authors mean a set of distributions where a group of parameters defines each distribution. An example of such a family is the family of normal distributions where the parameters are $\mu$ and $\Sigma$.
+
+Ng and Jordan denote by h𝐺𝑒𝑛 and h𝐷𝑖𝑠 two models chosen by optimizing different objectives. Which two families do the authors discuss, and what are the ($h_{Gen}$, $h_{Dis}$) pairs for those models? What objectives are being optimised?
+
+### My answer
+
+## Problem 11 Task c
+
+### Question
+
+Study Figure 1 in the paper. Explain what it suggests (see the last paragraph of the Introduction). Reflect on what this means for the families in Task b.
 
 ### My answer
 
 
+
+# Problem 12
+
+Objective: comparing classifiers on synthetic data, application of different classifiers. In this problem, you will compare different classifiers using synthetic toy data sets. 
+
+Section 4.7.2 (Logistic regression) and 4.7.5 (NB) of ISLR_v2 (or ISLP) contain helpful information for solving this problem.
+
+Toy data sets
+
+We have generated ten training data sets of different sizes toy_train_<n>.csv for $n \in {23, 25, ..., 212}$, and one test data set toy_test.csv with 10000 points.
+
+Each toy data set has a binary class variable $y \in {0,1}$and two real-valued features $x_1$, $x_2 \in R$. The data are generated from the “true” model as follows:
+
+  - x_1 and x_2 are sampled from a normal distribution with zero mean and unit variance.
+  
+  - The probability of 𝑦 is given by:
+  
+  $$
+  p(y=1|x_1, x_2) = \sigma(-\frac{1}{2}-x_1 + 3 \times \frac{x_2}{2} + \frac{x_1 \times x_2}{3} )
+  $$
+
+where $\sigma(t) = 1/(1 + e^{-t})$is the standard logistic function.
+
+## Problem 12 Task a
+
+### Question
+
+Is the Naive Bayes (NB) assumption valid for the toy data set? Explain why or why not.
+
+### My Answer
+
+NOT valid. The Naive Bayes (NB) assumption states that the features in a data are conditionally independent given the class label. In the formula of how y is generated, there is a interaction term $\frac{x_1 \times x_2}{3}$, which means the effect of $x_1$ on $y$ is modified by the effect of $x_2$ on $y$. That is, they are not independent on each other. 
+
+## Problem 12 Task b
+
+### Question 
+
+For each training set, train several classifiers that output probabilities (described below), and then report their accuracy and perplexity on the test set.
+Produce the following table (or make a plot) for accuracy and for perplexity on the test set:
+
+```{r}
+p12.tab <- matrix(rep("?", 60), nrow = 10, ncol = 6)
+colnames(p12.tab) <- c("n", "NB", "LR", "iLR", "Optimal Bayes", "Dummy")
+p12.tab <- p12.tab |> data.frame()
+for (i in 1:nrow(p12.tab)){
+  p12.tab[i, "n"] <- 2^i
+}
+p12.tab |> kable()
+```
+
+
+where the columns correspond to:
+ - Naive Bayes (NB) (e.g., naive Bayes from the library e1071)
+ - Logistic regression without an interaction term (e.g., glm)
+ - Logistic regression with an interaction term (e.g., glm)
+ - Optimal Bayes classifier that uses the actual class conditional probabilities (that you know in this case!)
+to compute $p(y|x_1,x2)$ for a given $(x_1,x_2)$ - no probabilistic classifier can do better than this.
+
+`Dummy classifier` that does not depend on x. It always outputs the probability 𝑝̂(𝑦 = 1 ∣ 𝑥1,𝑥2) as the fraction of 𝑦 = 1 in the training data. “Dummy” means that the classifier output does not depend on the covariates. Including a dummy classifier in your comparison is always a good idea! One way to get a dummy classifier here is to train a logistic regression with only the intercept term.
+
+### My answer
+
+```{r}
+library(e1071)
+library(glmnet)
+
+# Initialize the results table
+p12.tab <- matrix(rep("?", 60), nrow = 10, ncol = 6)
+colnames(p12.tab) <- c("n", "NB", "LR", "iLR", "Optimal Bayes", "Dummy")
+p12.tab <- p12.tab |> data.frame()
+for (i in 1:nrow(p12.tab)) {
+  p12.tab[i, "n"] <- 2^(i + 2)
+}
+```
+
+```{r}
+#read data
+test_data <- 
+  read_csv(file.path(here(), "Exercise Sets-20231117", "E2", "data_E2", "toy_test.csv"))
+```
+
+```{r}
+# Function to calculate the probability using the Optimal Bayes classifier
+optimal_bayes_prob <- function(x1, x2) {
+  t <- -1/2 - x1 + 3 * x2 / 2 + x1 * x2 / 3
+  return(1 / (1 + exp(-t)))
+}
+
+
+```
+
+
+```{r}
+# Define a function to calculate accuracy and perplexity
+calculate_metrics <- function(predicted_prob, actual) {
+  # Calculate accuracy
+  predicted_class <- ifelse(predicted_prob >= 0.5, 1, 0)
+  accuracy <- mean(predicted_class == actual)
+
+  # Calculate perplexity
+  perplexity <- exp(-mean(actual * log(predicted_prob) + (1 - actual) * log(1 - predicted_prob)))
+
+  return(c(accuracy, perplexity))
+}
+
+# Loop over each training set size
+for (i in 1:nrow(p12.tab)) {
+  n <- p12.tab[i, "n"]
+  
+  # Load the training data
+  train_data <- read.csv(paste0("/Users/rongguang/Documents/Projects/Machine Learning/Exercise Sets-20231117/E2/data_E2/toy_train_", n, ".csv"))
+
+  # Naive Bayes
+  NB_model <- naiveBayes(y ~ ., data = train_data)
+  NB_prob <- predict(NB_model, test_data, type = "raw")[, 2]
+  p12.tab[i, c("NB", "NB_perp")] <- calculate_metrics(NB_prob, test_data$y)
+
+  # Logistic Regression without interaction term
+  LR_model <- glm(y ~ ., data = train_data, family = binomial)
+  LR_prob <- predict(LR_model, test_data, type = "response")
+  p12.tab[i, c("LR", "LR_perp")] <- calculate_metrics(LR_prob, test_data$y)
+
+  # Logistic Regression with interaction term
+  iLR_model <- glm(y ~ . + x1 * x2, data = train_data, family = binomial)
+  iLR_prob <- predict(iLR_model, test_data, type = "response")
+  p12.tab[i, c("iLR", "iLR_perp")] <- calculate_metrics(iLR_prob, test_data$y)
+
+  # Optimal Bayes
+  test_data$optimal_bayes_prob <- with(test_data, optimal_bayes_prob(x1, x2))
+  optimal_bayes_true_metrics <- calculate_metrics(test_data$optimal_bayes_prob, test_data$y)
+  p12.tab[i, c("Optimal.Bayes", "Optimal.Bayes_perp")] <- optimal_bayes_true_metrics
+  # Dummy classifier
+  dummy_prob <- mean(train_data$y)
+  dummy_metrics <- calculate_metrics(rep(dummy_prob, nrow(test_data)), test_data$y)
+  p12.tab[i, c("Dummy", "Dummy_perp")] <- dummy_metrics
+}
+
+```
+
+The table of accuracy is as follows:
+
+```{r}
+p12.tab |> 
+  dplyr::select(
+    !contains("_perp")
+  )
+```
+
+The table of perplexity is as follows:
+
+```{r}
+p12.tab |> 
+  dplyr::select(
+    n, contains("_perp")
+  )
+```
+
+## Problem 12 Task c
+
+### Question
+
+Task c
+Report the logistic regression coeﬀicients with interaction terms for the largest training data set. How do they compare with the coeﬀicients of the actual model that generated the data?
+Discuss your observations and what you can conclude.
+
+  - Which of the models above are probabilistic, discriminative, and generative?
+  
+  - How do accuracy and perplexity (log-likelihood) compare?
+  
+  - Is there a relation to the insights from the previous problem?
+  
+  - Why does logistic regression with the interaction term perform so well for larger datasets?
+  
+  - Does your dummy classifier ever outperform other classifiers, or do different classifiers outperform the optimal Bayes classifier?
+
+### My answer 
+
+This is the logistic regression coeﬀicients with interaction terms for the largest training data set:
+
+```{r}
+# Assuming the largest dataset is loaded as largest_train_data
+# The model formula includes interaction between x1 and x2
+largest_train_data <- read.csv(paste0("/Users/rongguang/Documents/Projects/Machine Learning/Exercise Sets-20231117/E2/data_E2/toy_train_", "4096", ".csv"))
+model <- glm(y ~ x1 + x2 + I(x1 * x2), data = largest_train_data, family = binomial())
+print(coef(model))
+```
+
+
+In the exercise, 
+
+  - Logistic regression, optimal Bayes classifiers, and naive Bayesian probabilistic; 
+  
+  - Logistic Regression (both with and without interaction terms) is a discriminative model.
+  
+  - Naive Bayes is a generative model.
+
+Accuracy vs perplexity,
+
+  - Accuracy measures the proportion of correct predictions.
+  
+     - Higher accuracy, more correct classification. 
+  
+  - Perplexity is a measure of how well the probability model predicts a sample.
+
+     - A less perplexed model is more confident and accurate in its predictions.
+     
+  - In our exercise, accuracy increases with the sample size increasing and hit the ceiling around hundreds.
+  
+  - In our exercise, perplexity decreases with the sample size increasing and hit the ceiling around hundreds. 
+  
+  - In our exercise, lower perplexity model usually outperforms higher perplexity model in terms of accuracy, and higher accuracy model usually outperforms lower perplexity model in terms of perplexity.
+  
+
+Why logistic regression with interaction term works well?
+
+   - Because it captures the interactive relationship between $x_1$ and $x_2$ in the model, which is pre-defined in the true model in our exercise.
+
+   - With increasing sample size, model variance is decreasing. Such pattern of interaction is more pronounced. 
+
+Does your dummy classifier ever outperform others?
+
+   - No. Generally it works worse than other classifiers.
+   
+   - Exceptions are when the sample sizes are extremely small/
+   
+   
+Do different classifiers outperform the optimal Bayes classifier?
+
+   - No. Optimal Bayes classifier uses the true model and it generally outperforms other classifiers.
+   
+   - Exceptions are one iLR classifier with large sample size by very small margin, which might be due to over-fitting. With even larger sample, this edge disappears.  
+
+# Problem 13
+[6 points]
+Objectives: basic principles of decision trees
+
+In this task, you will simulate a decision tree algorithm by hand using the toy data shown in the figure. Read Section 8.1 of ISLR_v2. Use the Gini index of Equation (8.6) as an impurity measure.
+
+(You do not need to worry about overfitting here: the resulting classification tree should have enough splits to fit the training data without error. Don’t worry if your results are not optimal or super-accurate, as long as they are “in the ballpark”.)
+
+## Problem 13 Task a
 
 
