@@ -1053,7 +1053,7 @@ Do different classifiers outperform the optimal Bayes classifier?
    - Exceptions are one iLR classifier with large sample size by very small margin, which might be due to over-fitting. With even larger sample, this edge disappears.  
 
 # Problem 13
-[6 points]
+
 Objectives: basic principles of decision trees
 
 In this task, you will simulate a decision tree algorithm by hand using the toy data shown in the figure. Read Section 8.1 of ISLR_v2. Use the Gini index of Equation (8.6) as an impurity measure.
