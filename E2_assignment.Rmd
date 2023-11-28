@@ -930,7 +930,7 @@ for (i in 1:nrow(p12.tab)) {
   n <- p12.tab[i, "n"]
   
   # Load the training data
-  train_data <- read.csv(paste0("/Users/rongguang/Documents/Projects/Machine Learning/Exercise Sets-20231117/E2/data_E2/toy_train_", n, ".csv"))
+  train_data <- read.csv(paste0(here(), "/Exercise Sets-20231117/E2/data_E2/toy_train_", n, ".csv"))
 
   # Naive Bayes
   NB_model <- naiveBayes(y ~ ., data = train_data)
@@ -1002,7 +1002,7 @@ This is the logistic regression coeﬀicients with interaction terms for the lar
 ```{r}
 # Assuming the largest dataset is loaded as largest_train_data
 # The model formula includes interaction between x1 and x2
-largest_train_data <- read.csv(paste0("/Users/rongguang/Documents/Projects/Machine Learning/Exercise Sets-20231117/E2/data_E2/toy_train_", "4096", ".csv"))
+largest_train_data <- read.csv(paste0(here(), "/Exercise Sets-20231117/E2/data_E2/toy_train_", "4096", ".csv"))
 model <- glm(y ~ x1 + x2 + I(x1 * x2), data = largest_train_data, family = binomial())
 print(coef(model))
 ```
@@ -1056,10 +1056,175 @@ Do different classifiers outperform the optimal Bayes classifier?
 [6 points]
 Objectives: basic principles of decision trees
 
+```{r}
+knitr::include_graphics(file.path(here(), "data", "p13.png")) 
+```
+
 In this task, you will simulate a decision tree algorithm by hand using the toy data shown in the figure. Read Section 8.1 of ISLR_v2. Use the Gini index of Equation (8.6) as an impurity measure.
 
 (You do not need to worry about overfitting here: the resulting classification tree should have enough splits to fit the training data without error. Don’t worry if your results are not optimal or super-accurate, as long as they are “in the ballpark”.)
 
+```{r}
+
+```
+
+
 ## Problem 13 Task a
+
+```{r}
+1-((15/23)^2+(1-15/23)^2)
+1-((8/15)^2+(1-8/15)^2)
+1-((8/12)^2+(1-8/12)^2)
+1-((4/5)^2+(1-4/5)^2)
+```
+
+```{r}
+knitr::include_graphics(file.path(here(), "data", "tree.png")) 
+```
+
+# Problem 14
+
+Learning objectives: basics of the k-NN method.
+
+In this task, you will apply the k-nearest neighbour (k-NN) classifier by hand on a toy data set. You should be able to do this with pen and paper.
+We will use the training dataset $D = {(x_i, c_i)}_{i=1}^{14}$ , shown below, where 𝑥 ∈ R are the co-variates and $c_i \in \{-1, +1\}$ are the classes.
+
+
+```{r}
+p14.matrix <- 
+  matrix(
+    c(0,2,3,5,6,8,9,12,13,15,16,18,19,21, "+1","+1","+1","-1","+1","+1","+1","-1","-1","-1","+1","-1","-1","-1"),
+    nrow = 2, ncol = 14, byrow =  T
+  )
+colnames(p14.matrix) <- 1:14
+rownames(p14.matrix) <- c("xi", "ci")
+
+p14.matrix |> DT::datatable()
+```
+
+## Problem 14 Task a
+
+### Question
+
+Where are the classification boundaries for the 1-NN and 3-NN classifiers? What are the respective classification errors on the training dataset?
+
+### My answer
+
+For 1-NN classifier, the classification boundaries are **4, 5.5, 10.5, 15.5 and 17**. The classification error is **0**.
+
+For 3-NN classifier, the classification boundaries are  **5.5, 10.5, 17**. The classification error is **0.143**.
+
+## Problem 14  Task b
+
+### Question
+
+How does the choice of k in k-NN affect the classification boundary (not in the above example but in general)? Give examples of the behaviour for extreme choices (very small or large 𝑘).
+
+
+### My answer
+
+The choice of K has a drastic effect on the KNN classifier obtained. When K is extremely small, the decision boundary is overly flexible and finds patterns in the data that don’t correspond to the Bayes decision boundary. This corresponds to a classifier that has low bias but very high variance. As K grows, the method becomes less flexible and produces a decision boundary that is close to linear. This corresponds to a low-variance but high-bias classifier. For example, if we select k = 1, the classifier over-fits the data, leaving a training error of 0 but high testing error; On the other hand, if we select a very large k, say 100, the classifier will become less flexible with very big variance, producing high testing error.
+
+
+# Problem 15
+
+Topic: SVM
+
+In this problem, you will study the support vector machine (SVM) classifier on the toy data set shown below.
+
+```{r}
+p15.matrix <- 
+  matrix(
+    c(-1.5, 0, 1,0, 0.9, 1, 0.2, -1.8, 1, 2, 0, 1,4, 1, -1, 4, -1, -1, 6, -0.5, -1,  7, 1, -1),
+    nrow = 8, ncol = 3, byrow = T
+  )
+
+colnames(p15.matrix) <- c("x1", "x2", "class")
+
+rownames(p15.matrix) <- LETTERS[1:8]
+```
+
+Find a separating hyperplane with the largest margin on the data set above. write down the equation for this hyperplane and report the margin size.
+
+Which of the points(A-H) are support vectors?
+
+Hint: You can answer without mathematical proofs. You can do it simply by geometric intuition.
+
+
+
+```{r}
+knitr::include_graphics(file.path(here(), "data", "p15.png")) 
+```
+
+My intuition is points D, E and F are support vectors. The points are plotted as below, with hyperlane plotted as a thick line and points on dashed lines are support vectors.  
+
+```{r}
+# Given dataset matrix
+p15.matrix <- 
+  matrix(
+    c(-1.5, 0, 1, 0, 0.9, 1, 0.2, -1.8, 1, 2, 0, 1, 4, 1, -1, 4, -1, -1, 6, -0.5, -1, 7, 1, -1),
+    nrow = 8, ncol = 3, byrow = T
+  )
+
+# Convert matrix to data frame for plotting
+p15.df <- as.data.frame(p15.matrix)
+colnames(p15.df) <- c("x1", "x2", "class")
+plot(p15.df$x1, p15.df$x2, col=factor(p15.df$class), pch=19, xlab="x1", ylab="x2")
+
+abline(v=3, lwd = 3) 
+
+abline(v=2, lty = 2) 
+abline(v=4, lty = 2) 
+```
+
+The Hyperplane Equations for points D, E and F are
+
+  - D: $a \times 2.0 + b \times 0 + c = 0$
+  
+  - E: $a \times 4.0 + b \times 1 + c = 0$
+  
+  - F: $a \times 4.0 + b \times -1 + c = 0$
+
+
+# Problem 16
+
+## Problem 16 Task a
+
+### Question
+
+Write a learning diary of the topics of lectures 5-8 and this exercise set.
+
+Instructions
+
+Guiding questions: What did I learn? What did I not understand? Was there something relevant to other studies or (future) work? Your reply should be 1-3 paragraphs of text. You can also give feedback on the course.
+
+During these sessions, I learnt the logic behind a number of classifiers, including logistic regression, LDA, naive Bayesian, SVM, decision trees, bagging, random forests and ensemble methods. I followed the math behind some of these techniques. I also reviewed a number of distance metrics. 
+
+I didn't manage to follow some of the mathematical proofs, especially support vector machine. Some of the distance metrics mentioned in the class sounds very new to me. I am still trying to get my head around them, especially which metrics fits which scenario.
+
+In the sessions I found some math blind spots (such as optimization) and I will make them up by joining more basic level courses, after this course.
+
+## Problem 16 Task b
+
+### Question
+
+Give an estimate of the hours used in solving the problems in this exercise set.
+
+### My answer
+
+12 hours.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
