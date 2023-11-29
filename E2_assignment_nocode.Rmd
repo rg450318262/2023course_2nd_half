@@ -6,7 +6,7 @@ date: "2023-11-18"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, warning = F, message = T, echo = F)
+knitr::opts_chunk$set(collapse = TRUE, warning = F, message = T, echo = T)
 ```
 
 # Problem 8
