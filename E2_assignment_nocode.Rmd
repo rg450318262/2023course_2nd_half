@@ -1,34 +1,30 @@
 ---
 title: "E2 assignment"
 output: 
-   html_document:
-     code_folding: hide
+    html_document
 date: "2023-11-18"
-editor_options: 
-  markdown: 
-    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, warning = T, message = T)
+knitr::opts_chunk$set(collapse = TRUE, warning = T, message = T, echo = F)
 ```
 
 # Problem 8
 
 Performance measures In this exercise set, you will train probabilistic
-classifiers which estimate $\hat{p}(y | x)$): the probability of class 𝑦
-given the covariate vector x. Two commonly used performance measures for
-probabilistic classifiers are accuracy and perplexity. We use the
+classifiers which estimate $\hat{p}(y | x)$: the probability of class
+$y$ given the covariate vector x. Two commonly used performance measures
+for probabilistic classifiers are accuracy and perplexity. We use the
 following notation:
 
-• $y_i \in \{0,1\}$: the true class of point 𝑖.
+-   $y_i \in \{0,1\}$: the true class of point $i$.
 
-• $\hat{p} = \hat{p}(y = 1 | x)$: the estimated probability for the 𝑖th
-point in a dataset of size 𝑛 being spam.
+-   $\hat{p} = \hat{p}(y = 1 | x)$: the estimated probability for the
+    $ith$ point in a dataset of size $n$ being spam.
 
-• $\hat{y}$: the predicted class for point i which is $\hat{y} = 1$ if
-$\hat{p} \geq 0.5$ and $\hat{y} = 0$.We define the accuracy on a dataset
-of n items as follows:
+-   $\hat{y}$: the predicted class for point i which is $\hat{y} = 1$ if
+    $\hat{p} \geq 0.5$ and $\hat{y} = 0$.We define the accuracy on a
+    dataset of n items as follows:
 
 $$
 accuracy = \Sigma_{i=1}^{n}I(y = \hat{y_i})/n
@@ -39,11 +35,11 @@ perplexity = \exp(-\Sigma_{i=1}^{n}log\hat{p}(y = y_i|x_i)/n)
 $$
 
 Perplexity is a transformation of the likelihood (perplexity =
-exp(−loglikelihood/𝑛)), which may be the most commonly used performance
-measure on probabilistic classifiers. Example values are perplexity = 1
-for a perfect classifier, which always predicts the probability of one
-to an actual class, and perplexity = 2 for coin flipping, which has a
-predicted class probabilit $\hat{p} = 1/2$.
+exp($-loglikelihood/n$)), which may be the most commonly used
+performance measure on probabilistic classifiers. Example values are
+perplexity = 1 for a perfect classifier, which always predicts the
+probability of oneto an actual class, and perplexity = 2 for coin
+flipping, which has a predicted class probabilit $\hat{p} = 1/2$.
 
 ## Problem 8 Task a
 
@@ -99,8 +95,7 @@ coef(fit) |>
   kable(format = "latex",
         booktabs = TRUE, 
         escape = TRUE, 
-        digits = 5,
-        caption = "Fig P1_Task_a_1. Model coefficient on train set"
+        digits = 5
         ) |> 
     kable_styling(full_width = TRUE)
 #caption = "Fig P1_Task_a_1. Model coefficient on train set"
@@ -217,9 +212,9 @@ baseline_test_perplexity <- get_perplexity(fit, test.set, "SPAM")[1,2]
 **Why don't converge?** The warning of convergence can be the result of
 overly complex model, multi-colinearity and too few observations in
 terms of predictors. In our case, we have fairly small number of
-predictors against observations. I suppose the problem is mostly due to
-multi-colinearity. This can be further consolidated by the common fact
-that a spam email usually has more than one of these identifying
+predictors against observations. I suppose the problem is mostly due
+tomulti-colinearity. This can be further consolidated by the common
+factthat a spam email usually has more than one of these identifying
 features. To tell the truth, I say it mostly because task b is about
 regularization. Couldn't find a safer guess. :)
 
@@ -228,7 +223,9 @@ model coeﬀicients** $\beta$ and the covariate vector $x$.
 
 $$
 \hat{p}(y = 1 \mid x) = \frac{1}{1 + e^{-(-55.0 + 17.5 \times x_1 + 0 \times x_2+ 17.9 \times x_3 + 34.9 \times x_4 + 38.1 \times x_5)}} \\
-$$ Where $x_1$ is MISSING_FROM; $x_2$ is FROM_ADDR_WS; $x_3$ is
+$$
+
+Where $x_1$ is MISSING_FROM; $x_2$ is FROM_ADDR_WS; $x_3$ is
 TVD_SPACE_RATIO; $x_4$ is LOTS_OF_MONEY; $x_5$ is
 T_FILL_THIS_FORM_SHORT.
 
@@ -500,8 +497,8 @@ p1_taskb_table |>
 
 **To analyze how the distributions of probabilities differ between the
 regularized and unregularized models, I visualized and overlaid their
-density plots.** On each side of p\>0.5 ($\hat{y} = 1$) and
-p\<0.5$\hat{y} = 0$, the LASSO model with $\lambda = 0.0005$ shows more
+density plots.** On each side of p>0.5 ($\hat{y} = 1$) and
+p<0.5$\hat{y} = 0$, the LASSO model with $\lambda = 0.0005$ shows more
 centered and higher peaks.
 
 ```{r}
@@ -518,16 +515,21 @@ legend("topright", c("Non-regularized model", "Lasso model"),
 
 # Problem 9
 
-[6 points] Objective: generative Bayes classifier 
+[6 points] Objective: generative Bayes classifier
 
-In this problem, you will study the quadratic discriminant analysis (QDA) classifier.
-Consider a simple case with two classes and only one feature ($K$ = 2 and $p$ = 1).
+In this problem, you will study the quadratic discriminant analysis
+(QDA) classifier. Consider a simple case with two classes and only one
+feature ($K$ = 2 and $p$ = 1).
 
 ## Question Task a
 
-Prove that the QDA classifier is not linear if the class-specific variances differ ($\sigma_1^2 \ne \sigma_2^2$). 
+Prove that the QDA classifier is not linear if the class-specific
+variances differ ($\sigma_1^2 \ne \sigma_2^2$).
 
-Hint: This problem is from the textbook (Problem 3, page 189). Please see the discussion in the textbook for hints and guidance. For this problem, you should follow the arguments laid out in Sect. 4.4.1 of the textbook, but without assuming that $\sigma_1^2 = \sigma_2^2$
+Hint: This problem is from the textbook (Problem 3, page 189). Please
+see the discussion in the textbook for hints and guidance. For this
+problem, you should follow the arguments laid out in Sect. 4.4.1 of the
+textbook, but without assuming that $\sigma_1^2 = \sigma_2^2$
 
 ## My answer
 
@@ -540,34 +542,36 @@ $$
 p(x | y = k) = \frac{1}{\sqrt{2\pi\sigma_k^2}} \exp\left(-\frac{(x - \mu_k)^2}{2\sigma_k^2}\right) 
 $$
 
-where \$ k \$ is the class index (1 or 2), \$ \mu\_k \$ is the mean of
-class \$ k \$, and \$ \sigma\_k\^2 \$ is the variance of class \$ k \$.
+where $k$ is the class index (1 or 2), $\mu_k$ is the mean of $k$, and $\sigma_k^2$ is the variance of class $k$.
 
-\\section\*{Decision Rule:}
+The QDA classifier assigns a point $x$ to the class for which
+$p(x | y = k)$ is higher. The decision boundary is where
 
-The QDA classifier assigns a point \$ x \$ to the class for which \$ p(x
-\| y = k)\$ is higher. The decision boundary is where
-$$ p(x | y = 1) = p(x | y = 2) $$
+$$ 
+p(x | y = 1) = p(x | y = 2) 
+$$
 
 Setting the class-conditional densities equal to each other, we get:
 
-$$ \frac{1}{\sqrt{2\pi\sigma_1^2}} \exp\left(-\frac{(x - \mu_1)^2}{2\sigma_1^2}\right) = \frac{1}{\sqrt{2\pi\sigma_2^2}} \exp\left(-\frac{(x - \mu_2)^2}{2\sigma_2^2}\right) $$
+$$ 
+\frac{1}{\sqrt{2\pi\sigma_1^2}} \exp\left(-\frac{(x - \mu_1)^2}{2\sigma_1^2}\right) = \frac{1}{\sqrt{2\pi\sigma_2^2}} \exp\left(-\frac{(x - \mu_2)^2}{2\sigma_2^2}\right) 
+$$
 
 Taking the logarithm of both sides simplifies this to:
 
-$$ -\frac{(x - \mu_1)^2}{2\sigma_1^2} + \log(\sigma_2) = -\frac{(x - \mu_2)^2}{2\sigma_2^2} + \log(\sigma_1) $$
+$$ 
+-\frac{(x - \mu_1)^2}{2\sigma_1^2} + \log(\sigma_2) = -\frac{(x - \mu_2)^2}{2\sigma_2^2} + \log(\sigma_1) 
+$$
 
 Expanding and rearranging terms, we get a quadratic equation in \$ x \$:
 
-$$ a x^2 + b x + c = 0 $$
+$$ 
+a x^2 + b x + c = 0 
+$$
 
-where \$ a \$, \$ b \$, and \$ c \$ are coefficients that depend on \$
-\mu\_1 \$, \$\mu\_2 \$, \$\sigma\_1\^2 \$, and \$ \sigma\_2\^2 \$.
+where $ a $, $ b $, and $ c $ are coefficients that depend on $\mu_1 $, $\mu_2$, $\sigma_1^2 $, and $ \sigma_2^2 $.
 
-If \$ \sigma\_1\^2 = \sigma\_2\^2 \$, the \$ x\^2 \$ terms cancel out,
-and the decision boundary becomes linear. However, if \$ \sigma\_1\^2
-\neq \sigma\_2\^2 \$, the \$ x\^2 \$ term remains, making the decision
-boundary quadratic, hence non-linear.
+If $\sigma_1^2 = \sigma_2^2$, the $x^2$ terms cancel out, and the decision boundary becomes linear. However, if $\sigma_1^2 \neq \sigma_2^2$, the $x^2$ term remains, making the decision boundary quadratic, hence non-linear.
 
 # Problem 10
 
@@ -579,22 +583,22 @@ palmer <- image_read("https://const-ae.name/img/penguins_vs.png") |>
   image_convert("svg")
 ```
 
-`r palmer`
 
 In this problem, you will study the Palmer penguins by building your own
 Naive Bayes classifier.
 
 Artwork by @allison_horst
 
-• Dataset description.
+-   Dataset description.
 
-• Use penguins_train.csv as your training data and penguins_test.csv as
-your testing data.
+-   Use penguins_train.csv as your training data and penguins_test.csv
+    as your testing data.
 
-• Binary classification task: classify the penguin species as $y \in$
-{Adelie, notAdelie} (not Adelie combining Gentoo and Chinstrap species)
-based on four morphological and weight measurements of the individual
-penguins, denoted by $x=(x_1, x_2, x_3, x_4)^T \in \mathbb{R}_4$
+-   Binary classification task: classify the penguin species as
+    $y \in {Adelie, notAdelie}$ (not Adelie combining Gentoo and
+    Chinstrap species) based on four morphological and weight
+    measurements of the individual penguins, denoted by
+    $x=(x_1, x_2, x_3, x_4)^T \in \mathbb{R}_4$
 
 Naive Bayes (NB) classifier
 
@@ -650,7 +654,8 @@ body_mass_sd_notAdelie <- sd(train |> filter(species == "Adelie") |> select(body
 
 ### My answer
 
-Each attribute’s means and standard deviations separately in the training set for both classes are as follows:
+Each attribute's means and standard deviations separately in the
+training set for both classes are as follows:
 
 ```{r}
 train |> 
@@ -667,7 +672,7 @@ train |>
   )
 ```
 
-The class probabilities using Laplace smoothing with a pseudocount of 1 on the training set are as follows:
+The class probabilities using Laplace smoothing with a pseudocount of 1on the training set are as follows:
 
 ```{r}
 # assign values 
@@ -683,59 +688,78 @@ class_probs <- (class + pseudocount) / (n_trial + n_dimension)
 total_count <- nrow(train)
 class_counts <- table(train$species)
 class_probs <- (class_counts + 1) / (total_count + length(class_counts))
+class_probs
 ```
-
-Class probabilities of `r names(class)[1]` is
-`r class_probs[[1]] |> round(3)`; and class probabilities of
-`r names(class)[2]` is `r class_probs[[2]] |> round(3)`
 
 ## Problem 10 Task b
 
 ### Question
- 
-Now, you can find the class-specific expressions for $p(x|y)$ needed by the NB classifier. Remember that according to NB assumption, the dimensions are independent, and hence, you can represent the class-specific $p(x|y)$ likelihoods as products of 4 1-dimensional normal distributions. Write down the formula needed to compute the posterior probability of the class being Adelie $\hat{p}(y = Adelie | x)$) as a function of the four measurements in x and the statistics (means, standard deviations, class probabilities) you computed in the task a above.
+
+Now, you can find the class-specific expressions for $p(x|y)$ needed by
+the NB classifier. Remember that according to NB assumption, the
+dimensions are independent, and hence, you can represent the
+class-specific $p(x|y)$ likelihoods as products of 4 1-dimensional
+normal distributions. Write down the formula needed to compute the
+posterior probability of the class being Adelie
+$\hat{p}(y = Adelie | x)$) as a function of the four measurements in x
+and the statistics (means, standard deviations, class probabilities) you
+computed in the task a above.
 
 ### My answer
 
-The class-specific likelihood $p(x|y)$ is represented as the product of four 1-dimensional normal distributions, one for each feature.
+The class-specific likelihood $p(x|y)$ is represented as the product of
+four 1-dimensional normal distributions, one for each feature.
 
-Given $p(x_i|y)$ follows a normal distribution with mean $\mu_{yi}$ and standard deviation $\sigma_{yi}$ for feature $i$ and and class $y$.
+Given $p(x_i|y)$ follows a normal distribution with mean $\mu_{yi}$ and
+standard deviation $\sigma_{yi}$ for feature $i$ and and class $y$.
 
 Class probability $p(y)$ are estimated from the data.
 
 $x = (x_1, x_2, x_3, x_4)^T$ are four measurements.
 
-The posterior probability $\hat{p}(y = Adelie| x)$ is calculated as follows:
+The posterior probability $\hat{p}(y = Adelie| x)$ is calculated as
+follows:
 
 $$
 \hat{p}(y = \text{Adelie} | x) = \frac{p(x | y = \text{Adelie}) \cdot p(y = \text{Adelie})}{p(x)}
 $$
 
-Where, 
+Where,
 
 $$
 p(x | y = \text{Adelie}) = \prod_{i=1}^{4} \frac{1}{\sqrt{2\pi\sigma_{\text{Adelie},i}^2}} \exp\left(-\frac{(x_i - \mu_{\text{Adelie},i})^2}{2\sigma_{\text{Adelie},i}^2}\right)
 $$
 
-Note that $\mu$ and $\sigma$ for each i have been calculated in the previous question.
+Note that $\mu$ and $\sigma$ for each i have been calculated in the
+previous question.
 
 And,
 
-$p(y = \text{Adelie})$ has been calculated using Laplace smoothing in the previous question.
+$p(y = \text{Adelie})$ has been calculated using Laplace smoothing in
+the previous question.
 
-And, 
+And,
 
-$$
-p(x) = \left( \prod_{j=1}^{4} \frac{1}{\sqrt{2\pi\sigma_{\text{Adelie},j}^2}} e^{-\frac{(x_j - \mu_{\text{Adelie},j})^2}{2\sigma_{\text{Adelie},j}^2}} \right) p(\text{Adelie}) + \left( \prod_{j=1}^{4} \frac{1}{\sqrt{2\pi\sigma_{\text{notAdelie},j}^2}} e^{-\frac{(x_j - \mu_{\text{notAdelie},j})^2}{2\sigma_{\text{notAdelie},j}^2}} \right) p(\text{notAdelie})
+$$ 
 
-$$
-Note that in our case, it is possible to assign class without calculating this $p(x)$ because it's the same for both classes and thus use it as denominator will not change the order of size for the nominators. 
+p(x) = \left( \prod*{j=1}^{4}*\frac{1}{\sqrt{2\pi\sigma_{\text{Adelie},j}^2}}e^{-\frac{(x_j -\mu_{\text{Adelie},j})^2}{2\sigma_{\text{Adelie},j}^2}}\right) p(\text{Adelie}) + \left( \prod{j=1}^{4}\frac{1}{\sqrt{2\pi\sigma_{\text{notAdelie},j}^2}}e^{-\frac{(x_j - \mu_{\text{notAdelie},j})^2}{2\sigma_{\text{notAdelie},j}^2}}\right) p(\text{notAdelie})
+
+$$ 
+
+
+Note that in our case, it is possible to assign class without
+calculating this $p(x)$ because it's the same for both classes and thus
+use it as denominator will not change the order of size for the
+nominators.
 
 ## Problem 10 Task c
 
 ### Question
 
-Using the formula you derived in Task b, compute and report your classifier’s classification accuracy on the test set. Additionally, calculate and report the probabilities $\hat{p}( y = Adelie| x)$ for the three first penguins in the test set.
+Using the formula you derived in Task b, compute and report your
+classifier's classification accuracy on the test set. Additionally,
+calculate and report the probabilities $\hat{p}( y = Adelie| x)$ for the
+three first penguins in the test set.
 
 ```{r}
 #a function to calculate posterior for the row that is specified
@@ -781,15 +805,18 @@ test$predicted_class <- sapply(1:nrow(test), function(i) {
 })
 ```
 
-
-
 ```{r}
 accuracy <- mean(test$predicted_class == test$species)
 ```
 
-My classifier’s classification accuracy on the test set is `r accuracy``
+My classifier's classification accuracy on the test set is:
 
-The probabilities $\hat{p}(y = \text{Adelie} | x)$ for the three first penguins are as follows:
+```{r}
+accuracy
+```
+
+The probabilities $\hat{p}(y = \text{Adelie} | x)$ for the three first
+penguins are as follows:
 
 ```{r}
 test[1:3,c(5:7)]
@@ -799,73 +826,122 @@ test[1:3,c(5:7)]
 
 Objective: Understanding discriminative vs generative learning.
 
-Download the reference below. You do not need to read the full paper or understand all the details! Instead, try to find the answers to the following questions.
+Download the reference below. You do not need to read the full paper or
+understand all the details! Instead, try to find the answers to the
+following questions.
 
-Reference: Ng, Jordan (2001) On discriminative vs. generative classifiers: A comparison of logistic regres- sion and naive Bayes. NIPS. http://papers.nips.cc/paper/2020-on-discriminative-vs-generative-classifiers- a-comparison-of-logistic-regression-and-naive-bayes.pdf
+Reference: Ng, Jordan (2001) On discriminative vs. generative
+classifiers: A comparison of logistic regres- sion and naive Bayes.
+NIPS.
+<http://papers.nips.cc/paper/2020-on-discriminative-vs-generative-classifiers->
+a-comparison-of-logistic-regression-and-naive-bayes.pdf
 
 ## Problem 11 Task a
 
 ### Question
 
-Read the Abstract and Introduction (Sect. 1). According to the authors, is discriminative learning better than generative learning? Justify your answer.
+Read the Abstract and Introduction (Sect. 1). According to the authors,
+is discriminative learning better than generative learning? Justify your
+answer.
 
 ### My answer
 
-Yes. According to the authors, discriminative learning is better than generative learning. My justifications are (mostly adapted from the paper):
+Yes. According to the authors, discriminative learning is better than
+generative learning. My justifications are (mostly adapted from the
+paper):
 
-a. Generative learning does not solve the classification task directly. Instead, it tries to tap into a more general issue: estimating the probability distribution of the response ($y$) given the class labels ($x$). According to Occam's Razor,  all else being equal, we expect simpler hypothesis to perform better than more complicated ones. By attempting to solving this general problem, generative learning introduces more uncertainty and hence risk lower model performance. 
+a.  Generative learning does not solve the classification task directly.
+    Instead, it tries to tap into a more general issue: estimating the
+    probability distribution of the response ($y$) given the class
+    labels ($x$). According to Occam's Razor, all else being equal, we
+    expect simpler hypothesis to perform better than more complicated
+    ones. By attempting to solving this general problem, generative
+    learning introduces more uncertainty and hence risk lower model
+    performance.
 
-b. For discriminative models, the amount of data required to effectively train the model scales linearly with its complexity (VC dimension). learn the joint probability distribution $P(x, y)$ and typically have higher complexity due to the need to model the distribution of each feature. In other word, discriminative models are less data-efficient. 
-   
-c. In the study, the authors experimented on the performance of naive Bayes model (for both discrete and continuous inputs) and its discriminative analog, logistic regression/linear classifi- cation. The results show: The generative model does indeed have a higher asymptotic error (as the number of training examples becomes large) than the discriminative model.
+b.  For discriminative models, the amount of data required to
+    effectively train the model scales linearly with its complexity (VC
+    dimension). learn the joint probability distribution $P(x, y)$ and
+    typically have higher complexity due to the need to model the
+    distribution of each feature. In other word, discriminative models
+    are less data-efficient.
 
-d. Also note that generative models are often more naturally equipped to handle missing data than discriminative models. The comparison above is built upon the scenario when no missing values exist in the data. 
-   
-   
+c.  In the study, the authors experimented on the performance of naive
+    Bayes model (for both discrete and continuous inputs) and its
+    discriminative analog, logistic regression/linear classifi- cation.
+    The results show: The generative model does indeed have a higher
+    asymptotic error (as the number of training examples becomes large)
+    than the discriminative model.
+
+d.  Also note that generative models are often more naturally equipped
+    to handle missing data than discriminative models. The comparison
+    above is built upon the scenario when no missing values exist in the
+    data.
 
 ## Problem 11 Task b
 
 ### Question
 
-By a “parametric family of probabilistic models”, the authors mean a set of distributions where a group of parameters defines each distribution. An example of such a family is the family of normal distributions where the parameters are $\mu$ and $\Sigma$.
+By a "parametric family of probabilistic models", the authors mean a set
+of distributions where a group of parameters defines each distribution.
+An example of such a family is the family of normal distributions where
+the parameters are $\mu$ and $\Sigma$.
 
-Ng and Jordan denote by hGen and hDis two models chosen by optimizing different objectives. Which two families do the authors discuss, and what are the ($h_{Gen}$, $h_{Dis}$) pairs for those models? What objectives are being optimised?
+Ng and Jordan denote by hGen and hDis two models chosen by optimizing
+different objectives. Which two families do the authors discuss, and
+what are the ($h_{Gen}$, $h_{Dis}$) pairs for those models? What
+objectives are being optimised?
 
 ### My answer
 
-The two families the authors discussed: linear and multi-nominal.  
+The two families the authors discussed: linear and multi-nominal.
 
-The ($h_{Gen}$, $h_{Dis}$) pairs are naive Bayes model (for both discrete and continuous inputs) and its discriminative analog, logistic regression/linear classification. 
+The ($h_{Gen}$, $h_{Dis}$) pairs are naive Bayes model (for both
+discrete and continuous inputs) and its discriminative analog, logistic
+regression/linear classification.
 
-Optimised objectives include 0-1 training error, joint likelihood of the inputs and the labels, and conditional likelihood $p(y|x)$,
+Optimised objectives include 0-1 training error, joint likelihood of the
+inputs and the labels, and conditional likelihood $p(y|x)$,
 
 ## Problem 11 Task c
 
 ### Question
 
-Study Figure 1 in the paper. Explain what it suggests (see the last paragraph of the Introduction). Reflect on what this means for the families in Task b.
+Study Figure 1 in the paper. Explain what it suggests (see the last
+paragraph of the Introduction). Reflect on what this means for the
+families in Task b.
 
 ### My answer
 
 # Problem 12
 
-Objective: comparing classifiers on synthetic data, application of different classifiers. In this problem, you will compare different classifiers using synthetic toy data sets. 
+Objective: comparing classifiers on synthetic data, application of
+different classifiers. In this problem, you will compare different
+classifiers using synthetic toy data sets.
 
-Section 4.7.2 (Logistic regression) and 4.7.5 (NB) of ISLR_v2 (or ISLP) contain helpful information for solving this problem.
+Section 4.7.2 (Logistic regression) and 4.7.5 (NB) of ISLR_v2 (or ISLP)
+contain helpful information for solving this problem.
 
 Toy data sets
 
-We have generated ten training data sets of different sizes toy_train_<n>.csv for $n \in {23, 25, ..., 212}$, and one test data set toy_test.csv with 10000 points.
+We have generated ten training data sets of different sizes
+toy_train\_<n>.csv for $n \in {23, 25, ..., 212}$, and one test data set
+toy_test.csv with 10000 points.
 
-Each toy data set has a binary class variable $y \in {0,1}$and two real-valued features $x_1$, $x_2 \in R$. The data are generated from the “true” model as follows:
+Each toy data set has a binary class variable $y \in {0,1}$and two
+real-valued features $x_1$, $x_2 \in R$. The data are generated from the
+"true" model as follows:
 
-  - x_1 and x_2 are sampled from a normal distribution with zero mean and unit variance.
-  
-  - The probability of 𝑦 is given by:
-  
-  $$
+-   x_1 and x_2 are sampled from a normal distribution with zero mean
+    and unit variance.
+
+-   The probability of $y$ is given by:
+
+
+$$
   p(y=1|x_1, x_2) = \sigma(-\frac{1}{2}-x_1 + 3 \times \frac{x_2}{2} + \frac{x_1 \times x_2}{3} )
-  $$
+$$
+
 
 where $\sigma(t) = 1/(1 + e^{-t})$is the standard logistic function.
 
@@ -873,18 +949,26 @@ where $\sigma(t) = 1/(1 + e^{-t})$is the standard logistic function.
 
 ### Question
 
-Is the Naive Bayes (NB) assumption valid for the toy data set? Explain why or why not.
+Is the Naive Bayes (NB) assumption valid for the toy data set? Explain
+why or why not.
 
 ### My Answer
 
-NOT valid. The Naive Bayes (NB) assumption states that the features in a data are conditionally independent given the class label. In the formula of how y is generated, there is a interaction term $\frac{x_1 \times x_2}{3}$, which means the effect of $x_1$ on $y$ is modified by the effect of $x_2$ on $y$. That is, they are not independent on each other. 
+NOT valid. The Naive Bayes (NB) assumption states that the features in a
+data are conditionally independent given the class label. In the formula
+of how y is generated, there is a interaction term
+$\frac{x_1 \times x_2}{3}$, which means the effect of $x_1$ on $y$ is
+modified by the effect of $x_2$ on $y$. That is, they are not
+independent on each other.
 
 ## Problem 12 Task b
 
-### Question 
+### Question
 
-For each training set, train several classifiers that output probabilities (described below), and then report their accuracy and perplexity on the test set.
-Produce the following table (or make a plot) for accuracy and for perplexity on the test set:
+For each training set, train several classifiers that output
+probabilities (described below), and then report their accuracy and
+perplexity on the test set. Produce the following table (or make a plot)
+for accuracy and for perplexity on the test set:
 
 ```{r}
 p12.tab <- matrix(rep("?", 60), nrow = 10, ncol = 6)
@@ -896,15 +980,20 @@ for (i in 1:nrow(p12.tab)){
 p12.tab |> kable()
 ```
 
+where the columns correspond to: - Naive Bayes (NB) (e.g., naive Bayes
+from the library e1071) - Logistic regression without an interaction
+term (e.g., glm) - Logistic regression with an interaction term (e.g.,
+glm) - Optimal Bayes classifier that uses the actual class conditional
+probabilities (that you know in this case!) to compute $p(y|x_1,x2)$ for
+a given $(x_1,x_2)$ - no probabilistic classifier can do better than
+this.
 
-where the columns correspond to:
- - Naive Bayes (NB) (e.g., naive Bayes from the library e1071)
- - Logistic regression without an interaction term (e.g., glm)
- - Logistic regression with an interaction term (e.g., glm)
- - Optimal Bayes classifier that uses the actual class conditional probabilities (that you know in this case!)
-to compute $p(y|x_1,x2)$ for a given $(x_1,x_2)$ - no probabilistic classifier can do better than this.
-
-`Dummy classifier` that does not depend on x. It always outputs the probability 𝑝̂(𝑦 = 1 ∣ 𝑥1,𝑥2) as the fraction of 𝑦 = 1 in the training data. “Dummy” means that the classifier output does not depend on the covariates. Including a dummy classifier in your comparison is always a good idea! One way to get a dummy classifier here is to train a logistic regression with only the intercept term.
+`Dummy classifier` that does not depend on x. It always outputs the
+probability $\hat{p} (y = 1 | x_1, x2)$ as the fraction of \$ y = 1\$ in
+the training data. "Dummy" means that the classifier output does not
+depend on the covariates. Including a dummy classifier in your
+comparison is always a good idea! One way to get a dummy classifier here
+is to train a logistic regression with only the intercept term.
 
 ### My answer
 
@@ -936,7 +1025,6 @@ optimal_bayes_prob <- function(x1, x2) {
 
 
 ```
-
 
 ```{r}
 # Define a function to calculate accuracy and perplexity
@@ -1007,23 +1095,28 @@ p12.tab |>
 
 ### Question
 
-Task c
-Report the logistic regression coeﬀicients with interaction terms for the largest training data set. How do they compare with the coeﬀicients of the actual model that generated the data?
-Discuss your observations and what you can conclude.
+Task c Report the logistic regression coeﬀicients with interaction terms
+for the largest training data set. How do they compare with the
+coeﬀicients of the actual model that generated the data? Discuss your
+observations and what you can conclude.
 
-  - Which of the models above are probabilistic, discriminative, and generative?
-  
-  - How do accuracy and perplexity (log-likelihood) compare?
-  
-  - Is there a relation to the insights from the previous problem?
-  
-  - Why does logistic regression with the interaction term perform so well for larger datasets?
-  
-  - Does your dummy classifier ever outperform other classifiers, or do different classifiers outperform the optimal Bayes classifier?
+-   Which of the models above are probabilistic, discriminative, and
+    generative?
 
-### My answer 
+-   How do accuracy and perplexity (log-likelihood) compare?
 
-This is the logistic regression coeﬀicients with interaction terms for the largest training data set:
+-   Is there a relation to the insights from the previous problem?
+
+-   Why does logistic regression with the interaction term perform so
+    well for larger datasets?
+
+-   Does your dummy classifier ever outperform other classifiers, or do
+    different classifiers outperform the optimal Bayes classifier?
+
+### My answer
+
+This is the logistic regression coeﬀicients with interaction terms for
+the largest training data set:
 
 ```{r}
 # Assuming the largest dataset is loaded as largest_train_data
@@ -1033,67 +1126,78 @@ model <- glm(y ~ x1 + x2 + I(x1 * x2), data = largest_train_data, family = binom
 print(coef(model))
 ```
 
+In the exercise,
 
-In the exercise, 
+-   Logistic regression, optimal Bayes classifiers, and naive Bayesian
+    probabilistic;
 
-  - Logistic regression, optimal Bayes classifiers, and naive Bayesian probabilistic; 
-  
-  - Logistic Regression (both with and without interaction terms) is a discriminative model.
-  
-  - Naive Bayes is a generative model.
+-   Logistic Regression (both with and without interaction terms) is a
+    discriminative model.
+
+-   Naive Bayes is a generative model.
 
 Accuracy vs perplexity,
 
-  - Accuracy measures the proportion of correct predictions.
-  
-     - Higher accuracy, more correct classification. 
-  
-  - Perplexity is a measure of how well the probability model predicts a sample.
+-   Accuracy measures the proportion of correct predictions.
 
-     - A less perplexed model is more confident and accurate in its predictions.
-     
-  - In our exercise, accuracy increases with the sample size increasing and hit the ceiling around hundreds.
-  
-  - In our exercise, perplexity decreases with the sample size increasing and hit the ceiling around hundreds. 
-  
-  - In our exercise, lower perplexity model usually outperforms higher perplexity model in terms of accuracy, and higher accuracy model usually outperforms lower perplexity model in terms of perplexity.
-  
+    -   Higher accuracy, more correct classification.
+
+-   Perplexity is a measure of how well the probability model predicts a
+    sample.
+
+    -   A less perplexed model is more confident and accurate in its
+        predictions.
+
+-   In our exercise, accuracy increases with the sample size increasing
+    and hit the ceiling around hundreds.
+
+-   In our exercise, perplexity decreases with the sample size
+    increasing and hit the ceiling around hundreds.
+
+-   In our exercise, lower perplexity model usually outperforms higher
+    perplexity model in terms of accuracy, and higher accuracy model
+    usually outperforms lower perplexity model in terms of perplexity.
 
 Why logistic regression with interaction term works well?
 
-   - Because it captures the interactive relationship between $x_1$ and $x_2$ in the model, which is pre-defined in the true model in our exercise.
+-   Because it captures the interactive relationship between $x_1$ and
+    $x_2$ in the model, which is pre-defined in the true model in our
+    exercise.
 
-   - With increasing sample size, model variance is decreasing. Such pattern of interaction is more pronounced. 
+-   With increasing sample size, model variance is decreasing. Such
+    pattern of interaction is more pronounced.
 
 Does your dummy classifier ever outperform others?
 
-   - No. Generally it works worse than other classifiers.
-   
-   - Exceptions are when the sample sizes are extremely small/
-   
-   
+-   No. Generally it works worse than other classifiers.
+
+-   Exceptions are when the sample sizes are extremely small/
+
 Do different classifiers outperform the optimal Bayes classifier?
 
-   - No. Optimal Bayes classifier uses the true model and it generally outperforms other classifiers.
-   
-   - Exceptions are one iLR classifier with large sample size by very small margin, which might be due to over-fitting. With even larger sample, this edge disappears.  
+-   No. Optimal Bayes classifier uses the true model and it generally
+    outperforms other classifiers.
+
+-   Exceptions are one iLR classifier with large sample size by very
+    small margin, which might be due to over-fitting. With even larger
+    sample, this edge disappears.
 
 # Problem 13
-[6 points]
-Objectives: basic principles of decision trees
+
+[6 points] Objectives: basic principles of decision trees
 
 ```{r}
 knitr::include_graphics(file.path(here(), "data", "p13.png")) 
 ```
 
-In this task, you will simulate a decision tree algorithm by hand using the toy data shown in the figure. Read Section 8.1 of ISLR_v2. Use the Gini index of Equation (8.6) as an impurity measure.
+In this task, you will simulate a decision tree algorithm by hand using
+the toy data shown in the figure. Read Section 8.1 of ISLR_v2. Use the
+Gini index of Equation (8.6) as an impurity measure.
 
-(You do not need to worry about overfitting here: the resulting classification tree should have enough splits to fit the training data without error. Don’t worry if your results are not optimal or super-accurate, as long as they are “in the ballpark”.)
-
-```{r}
-
-```
-
+(You do not need to worry about overfitting here: the resulting
+classification tree should have enough splits to fit the training data
+without error. Don't worry if your results are not optimal or
+super-accurate, as long as they are "in the ballpark".)
 
 ## Problem 13 Task a
 
@@ -1112,9 +1216,11 @@ knitr::include_graphics(file.path(here(), "data", "tree.png"))
 
 Learning objectives: basics of the k-NN method.
 
-In this task, you will apply the k-nearest neighbour (k-NN) classifier by hand on a toy data set. You should be able to do this with pen and paper.
-We will use the training dataset $D = {(x_i, c_i)}_{i=1}^{14}$ , shown below, where 𝑥 ∈ R are the co-variates and $c_i \in \{-1, +1\}$ are the classes.
-
+In this task, you will apply the k-nearest neighbour (k-NN) classifier
+by hand on a toy data set. You should be able to do this with pen and
+paper. We will use the training dataset $D = {(x_i, c_i)}_{i=1}^{14}$ ,
+shown below, where 𝑥 ∈ R are the co-variates and $c_i \in \{-1, +1\}$
+are the classes.
 
 ```{r}
 p14.matrix <- 
@@ -1132,31 +1238,46 @@ p14.matrix |> DT::datatable()
 
 ### Question
 
-Where are the classification boundaries for the 1-NN and 3-NN classifiers? What are the respective classification errors on the training dataset?
+Where are the classification boundaries for the 1-NN and 3-NN
+classifiers? What are the respective classification errors on the
+training dataset?
 
 ### My answer
 
-For 1-NN classifier, the classification boundaries are **4, 5.5, 10.5, 15.5 and 17**. The classification error is **0**.
+For 1-NN classifier, the classification boundaries are **4, 5.5, 10.5,
+15.5 and 17**. The classification error is **0**.
 
-For 3-NN classifier, the classification boundaries are  **5.5, 10.5, 17**. The classification error is **0.143**.
+For 3-NN classifier, the classification boundaries are **5.5, 10.5,
+17**. The classification error is **0.143**.
 
-## Problem 14  Task b
+## Problem 14 Task b
 
 ### Question
 
-How does the choice of k in k-NN affect the classification boundary (not in the above example but in general)? Give examples of the behaviour for extreme choices (very small or large 𝑘).
-
+How does the choice of k in k-NN affect the classification boundary (not
+in the above example but in general)? Give examples of the behaviour for
+extreme choices (very small or large $k$).
 
 ### My answer
 
-The choice of K has a drastic effect on the KNN classifier obtained. When K is extremely small, the decision boundary is overly flexible and finds patterns in the data that don’t correspond to the Bayes decision boundary. This corresponds to a classifier that has low bias but very high variance. As K grows, the method becomes less flexible and produces a decision boundary that is close to linear. This corresponds to a low-variance but high-bias classifier. For example, if we select k = 1, the classifier over-fits the data, leaving a training error of 0 but high testing error; On the other hand, if we select a very large k, say 100, the classifier will become less flexible with very big variance, producing high testing error.
-
+The choice of K has a drastic effect on the KNN classifier obtained.
+When K is extremely small, the decision boundary is overly flexible and
+finds patterns in the data that don't correspond to the Bayes decision
+boundary. This corresponds to a classifier that has low bias but very
+high variance. As K grows, the method becomes less flexible and produces
+a decision boundary that is close to linear. This corresponds to a
+low-variance but high-bias classifier. For example, if we select
+$k = 1$, the classifier over-fits the data, leaving a training error of
+0 but high testing error; On the other hand, if we select a very large
+k, say 100, the classifier will become less flexible with very big
+variance, producing high testing error.
 
 # Problem 15
 
 Topic: SVM
 
-In this problem, you will study the support vector machine (SVM) classifier on the toy data set shown below.
+In this problem, you will study the support vector machine (SVM)
+classifier on the toy data set shown below.
 
 ```{r}
 p15.matrix <- 
@@ -1170,19 +1291,22 @@ colnames(p15.matrix) <- c("x1", "x2", "class")
 rownames(p15.matrix) <- LETTERS[1:8]
 ```
 
-Find a separating hyperplane with the largest margin on the data set above. write down the equation for this hyperplane and report the margin size.
+Find a separating hyperplane with the largest margin on the data set
+above. write down the equation for this hyperplane and report the margin
+size.
 
 Which of the points(A-H) are support vectors?
 
-Hint: You can answer without mathematical proofs. You can do it simply by geometric intuition.
-
-
+Hint: You can answer without mathematical proofs. You can do it simply
+by geometric intuition.
 
 ```{r}
 knitr::include_graphics(file.path(here(), "data", "p15.png")) 
 ```
 
-My intuition is points D, E and F are support vectors. The points are plotted as below, with hyperlane plotted as a thick line and points on dashed lines are support vectors.  
+My intuition is points D, E and F are support vectors. The points are
+plotted as below, with hyperlane plotted as a thick line and points on
+dashed lines are support vectors.
 
 ```{r}
 # Given dataset matrix
@@ -1205,12 +1329,11 @@ abline(v=4, lty = 2)
 
 The Hyperplane Equations for points D, E and F are
 
-  - D: $a \times 2.0 + b \times 0 + c = 0$
-  
-  - E: $a \times 4.0 + b \times 1 + c = 0$
-  
-  - F: $a \times 4.0 + b \times -1 + c = 0$
+-   D: $a \times 2.0 + b \times 0 + c = 0$
 
+-   E: $a \times 4.0 + b \times 1 + c = 0$
+
+-   F: $a \times 4.0 + b \times -1 + c = 0$
 
 # Problem 16
 
@@ -1218,39 +1341,38 @@ The Hyperplane Equations for points D, E and F are
 
 ### Question
 
-Write a learning diary of the topics of lectures 5-8 and this exercise set.
+Write a learning diary of the topics of lectures 5-8 and this exercise
+set.
 
 Instructions
 
-Guiding questions: What did I learn? What did I not understand? Was there something relevant to other studies or (future) work? Your reply should be 1-3 paragraphs of text. You can also give feedback on the course.
+Guiding questions: What did I learn? What did I not understand? Was
+there something relevant to other studies or (future) work? Your reply
+should be 1-3 paragraphs of text. You can also give feedback on the
+course.
 
-During these sessions, I learnt the logic behind a number of classifiers, including logistic regression, LDA, naive Bayesian, SVM, decision trees, bagging, random forests and ensemble methods. I followed the math behind some of these techniques. I also reviewed a number of distance metrics. 
+During these sessions, I learnt the logic behind a number of
+classifiers, including logistic regression, LDA, naive Bayesian, SVM,
+decision trees, bagging, random forests and ensemble methods. I followed
+the math behind some of these techniques. I also reviewed a number of
+distance metrics.
 
-I didn't manage to follow some of the mathematical proofs, especially support vector machine. Some of the distance metrics mentioned in the class sounds very new to me. I am still trying to get my head around them, especially which metrics fits which scenario.
+I didn't manage to follow some of the mathematical proofs, especially
+support vector machine. Some of the distance metrics mentioned in the
+class sounds very new to me. I am still trying to get my head around
+them, especially which metrics fits which scenario.
 
-In the sessions I found some math blind spots (such as optimization) and I will make them up by joining more basic level courses, after this course.
+In the sessions I found some math blind spots (such as optimization) and
+I will make them up by joining more basic level courses, after this
+course.
 
 ## Problem 16 Task b
 
 ### Question
 
-Give an estimate of the hours used in solving the problems in this exercise set.
+Give an estimate of the hours used in solving the problems in this
+exercise set.
 
 ### My answer
 
 12 hours.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
