@@ -17,7 +17,7 @@ output:
 
 # E2
 
-```{r child = "E2_assignment.Rmd"}
+```{r child = "E2_assignment_nocode.Rmd"}
 ```
   
 ***

@@ -6,7 +6,7 @@ date: "2023-11-18"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, warning = T, message = T, echo = F)
+knitr::opts_chunk$set(collapse = TRUE, warning = F, message = T, echo = F)
 ```
 
 # Problem 8
@@ -73,8 +73,8 @@ regularization.**
 
 ```{r}
 library(kableExtra)
-train.set |> map(is.na) |> map(sum)
-test.set |> map(is.na) |> map(sum)
+# train.set |> map(is.na) |> map(sum)
+# test.set |> map(is.na) |> map(sum)
 ```
 
 ```{r waning = T, message=T}
@@ -91,13 +91,8 @@ coef(fit) |>
   rename(
     variable = names,
     coefficient = x) |>
-  mutate_if(is.numeric, ~round(.x, 3))  |> 
-  kable(format = "latex",
-        booktabs = TRUE, 
-        escape = TRUE, 
-        digits = 5
-        ) |> 
-    kable_styling(full_width = TRUE)
+  mutate_if(is.numeric, ~round(.x, 3)) |> 
+  DT::datatable()
 #caption = "Fig P1_Task_a_1. Model coefficient on train set"
 
 ```
@@ -145,15 +140,9 @@ get_accuracy <-
     print(output)
   }
 
-get_accuracy(fit, test.set, "SPAM") |> 
-  DT::datatable()
-baseline_test_accuracy<- get_accuracy(fit, test.set, "SPAM")[1,2]|> 
-  kable(format = "latex",
-        booktabs = TRUE, 
-        escape = TRUE, 
-        digits = 5,
-        caption = "accuracy of training and testsing set"
-        ) 
+# get_accuracy(fit, test.set, "SPAM") |> 
+#   DT::datatable()
+baseline_test_accuracy<- get_accuracy(fit, test.set, "SPAM")[1,2]
 ```
 
 **The table below shows the perplexity on training and testing set.**
@@ -199,10 +188,10 @@ get_perplexity <-  #true.y is the variable name of y in test.set
   }
 
 # generate the table 
-p1.task.a.table.1 <- get_perplexity(fit, test.set, "SPAM") |>
-  mutate_if(is.numeric, ~round(.x,3))
-p1.task.a.table.1|> 
-  DT::datatable()
+# p1.task.a.table.1 <- get_perplexity(fit, test.set, "SPAM") |>
+#   mutate_if(is.numeric, ~round(.x,3))
+# p1.task.a.table.1|> 
+#   DT::datatable()
 
 #get values to report
 baseline_test_perplexity <- get_perplexity(fit, test.set, "SPAM")[1,2]
@@ -461,10 +450,6 @@ p1_taskb_table <-
       )
   )
 
-p1_taskb_table
-
-
-
 #coef.l0.parameters <- coef.l0 |> as.matrix() |> data.frame() 
 coef.l00005.parameters <- coef.l00005 |> as.matrix() |> data.frame() 
 coef.l005.parameters <- coef.l005 |> as.matrix() |> data.frame() 
@@ -493,6 +478,7 @@ p1_taskb_table <- cbind(p1_taskb_table, parameter.table)
 p1_taskb_table |> 
   mutate_if(is.numeric, ~round(.x,3)) |> 
   DT::datatable()
+
 ```
 
 **To analyze how the distributions of probabilities differ between the
@@ -569,7 +555,7 @@ $$
 a x^2 + b x + c = 0 
 $$
 
-where $ a $, $ b $, and $ c $ are coefficients that depend on $\mu_1 $, $\mu_2$, $\sigma_1^2 $, and $ \sigma_2^2 $.
+where $a$, $b$, and $c$ are coefficients that depend on $\mu_1$, $\mu_2$, $\sigma_1^2$, and $\sigma_2^2$.
 
 If $\sigma_1^2 = \sigma_2^2$, the $x^2$ terms cancel out, and the decision boundary becomes linear. However, if $\sigma_1^2 \neq \sigma_2^2$, the $x^2$ term remains, making the decision boundary quadratic, hence non-linear.
 
@@ -579,7 +565,7 @@ Objective: naive Bayes classifier
 
 ```{r}
 library(magick)
-palmer <- image_read("https://const-ae.name/img/penguins_vs.png") |>
+image_read("https://const-ae.name/img/penguins_vs.png") |>
   image_convert("svg")
 ```
 
@@ -654,10 +640,10 @@ body_mass_sd_notAdelie <- sd(train |> filter(species == "Adelie") |> select(body
 
 ### My answer
 
-Each attribute's means and standard deviations separately in the
-training set for both classes are as follows:
+Each attribute's means and standard deviations in the training set for both classes are tablated in the tables as follows:
 
 ```{r}
+p10.table <- 
 train |> 
   group_by(species) |> 
   summarise(
@@ -669,7 +655,16 @@ train |>
     sd_flipper_length_mm = sd(flipper_length_mm),
     mean_body_mass_g = mean(body_mass_g),
     sd_body_mass_g = sd(body_mass_g)
-  )
+  ) |> 
+  mutate_if(is.numeric, ~round(.,3)) 
+
+p10.table |> 
+  select(contains("mean_"))|> 
+  DT::datatable()
+
+p10.table |> 
+  select(contains("sd_"))|> 
+  DT::datatable()
 ```
 
 The class probabilities using Laplace smoothing with a pseudocount of 1on the training set are as follows:
@@ -688,7 +683,9 @@ class_probs <- (class + pseudocount) / (n_trial + n_dimension)
 total_count <- nrow(train)
 class_counts <- table(train$species)
 class_probs <- (class_counts + 1) / (total_count + length(class_counts))
-class_probs
+class_probs |> as.data.frame() |> 
+  mutate_if(is.numeric, ~round(.,3)) |> 
+  DT::datatable()
 ```
 
 ## Problem 10 Task b
@@ -741,9 +738,9 @@ the previous question.
 And,
 
 $$ 
-
-p(x) = \left( \prod*{j=1}^{4}*\frac{1}{\sqrt{2\pi\sigma_{\text{Adelie},j}^2}}e^{-\frac{(x_j -\mu_{\text{Adelie},j})^2}{2\sigma_{\text{Adelie},j}^2}}\right) p(\text{Adelie}) + \left( \prod{j=1}^{4}\frac{1}{\sqrt{2\pi\sigma_{\text{notAdelie},j}^2}}e^{-\frac{(x_j - \mu_{\text{notAdelie},j})^2}{2\sigma_{\text{notAdelie},j}^2}}\right) p(\text{notAdelie})
-
+p(x) = 
+\left( \prod_{j=1}^{4}*\frac{1}{\sqrt{2\pi\sigma_{\text{Adelie},j}^2}}e^{-\frac{(x_j -\mu_{\text{Adelie},j})^2}{2\sigma_{\text{Adelie},j}^2}}\right) p(\text{Adelie}) + 
+\left( \prod_{j=1}^{4}\frac{1}{\sqrt{2\pi\sigma_{\text{notAdelie},j}^2}}e^{-\frac{(x_j - \mu_{\text{notAdelie},j})^2}{2\sigma_{\text{notAdelie},j}^2}}\right) p(\text{notAdelie})
 $$ 
 
 
@@ -819,7 +816,8 @@ The probabilities $\hat{p}(y = \text{Adelie} | x)$ for the three first
 penguins are as follows:
 
 ```{r}
-test[1:3,c(5:7)]
+test[1:3,c(5:7)] |> 
+  DT::datatable()
 ```
 
 # Problem 11
@@ -1079,7 +1077,8 @@ The table of accuracy is as follows:
 p12.tab |> 
   dplyr::select(
     !contains("_perp")
-  )
+  ) |> 
+  DT::datatable()
 ```
 
 The table of perplexity is as follows:
@@ -1088,7 +1087,8 @@ The table of perplexity is as follows:
 p12.tab |> 
   dplyr::select(
     n, contains("_perp")
-  )
+  )|> 
+  DT::datatable()
 ```
 
 ## Problem 12 Task c
@@ -1123,7 +1123,11 @@ the largest training data set:
 # The model formula includes interaction between x1 and x2
 largest_train_data <- read.csv(paste0(here(), "/Exercise Sets-20231117/E2/data_E2/toy_train_", "4096", ".csv"))
 model <- glm(y ~ x1 + x2 + I(x1 * x2), data = largest_train_data, family = binomial())
-print(coef(model))
+print(coef(model))|> 
+  as.data.frame() |> 
+  rename(coefficients = 1) |> 
+  mutate_if(is.numeric, ~round(.,3)) |> 
+  DT::datatable()
 ```
 
 In the exercise,
@@ -1202,10 +1206,10 @@ super-accurate, as long as they are "in the ballpark".)
 ## Problem 13 Task a
 
 ```{r}
-1-((15/23)^2+(1-15/23)^2)
-1-((8/15)^2+(1-8/15)^2)
-1-((8/12)^2+(1-8/12)^2)
-1-((4/5)^2+(1-4/5)^2)
+a <- 1-((15/23)^2+(1-15/23)^2)
+b <- 1-((8/15)^2+(1-8/15)^2)
+c <- 1-((8/12)^2+(1-8/12)^2)
+d <- 1-((4/5)^2+(1-4/5)^2)
 ```
 
 ```{r}
@@ -1231,7 +1235,7 @@ p14.matrix <-
 colnames(p14.matrix) <- 1:14
 rownames(p14.matrix) <- c("xi", "ci")
 
-p14.matrix |> DT::datatable()
+p14.matrix |> kable()
 ```
 
 ## Problem 14 Task a
