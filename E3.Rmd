@@ -27,6 +27,8 @@ Answer the following:
 
 ### Answer
 
+It's for clustering task. It helps identify hidden patterns in the data, especially when we do not have any existing knowledge about the true clusters.
+
 ## Problem 17: Task b
 
 ### Question
@@ -35,7 +37,10 @@ Define the objective (or cost) function the k-means algorithm tries to minimise.
 
 What can you say about the objective function’s value during the algorithm iteration?
 
+
 ### Answer
+
+The k-means algorithm aims to minimize an objective function known as the within-cluster sum of squares (WCSS) or inertia. This objective function quantifies the variance within each cluster and is defined as the sum of squared distances between each data point and the centroid of its assigned cluster. Mathematically, the WCSS objective function can be expressed as follows:
 
 ## Problem 17: Task c
 
@@ -58,14 +63,169 @@ p17.table |>
   DT::datatable()
 ```
 
-```{r fig.height=3.5, fig.width=3}
+```{r fig.height=3.5, fig.width=3.5}
 p17.table |> t() |> plot(cex =0.1)
 text(p17.table |> t() |> data.frame()|> dplyr::pull(x), 
      p17.table |> t() |> data.frame()|> dplyr::pull(y),
      labels = p17.table |> t() |> row.names())
 ```
 
-Sketch a run of the (naive) k-means algorithm using 𝐾 = 2 and initial prototype (mean) vectors 𝜇1 = (0, 2) and 𝜇2 = (2, 0). Write down the calculation procedure at each iteration and report the cluster memberships, the prototype vectors, and the value of the objective function at each iteration.
+Sketch a run of the (naive) k-means algorithm using $K = 2$ and initial prototype (mean) vectors $\mu_1$ = (0, 2) and $\mu_2$ = (2, 0). Write down the calculation procedure at each iteration and report the cluster memberships, the prototype vectors, and the value of the objective function at each iteration.
+
+### Answer
+
+Calculate the Euclidean distance from each point to each prototype and assign each point to the closest prototype.
+
+```{r}
+euclidean <- function(a, b) sqrt(sum((a - b)^2))
+WCSS <- function (a,b)sum((a-b)^2)
+```
+
+Euclidean distance of point 1 to $\mu1$ and $\mu2$. Results show it's closer to $\mu1$.
+
+```{r}
+point1_to_mu1 <- euclidean(c(0,2), p17.table[,1])
+point1_to_mu2 <- euclidean(c(2,0), p17.table[,1])
+p1.assign <- which.min(c(point1_to_mu1, point1_to_mu2))
+```
+Euclidean distance of point 2 to $\mu1$ and $\mu2$. Results show it's closer to $\mu1$.
+
+```{r}
+point2_to_mu1 <- euclidean(c(0,2), p17.table[,2])
+point2_to_mu2 <- euclidean(c(2,0), p17.table[,2])
+p2.assign <- which.min(c(point2_to_mu1, point2_to_mu2))
+```
+
+Euclidean distance of point 3 to $\mu1$ and $\mu2$. Results show it's closer to $\mu2$.
+
+```{r}
+point3_to_mu1 <- euclidean(c(0,2), p17.table[,3])
+point3_to_mu2 <- euclidean(c(2,0), p17.table[,3])
+p3.assign <- which.min(c(point3_to_mu1, point3_to_mu2))
+```
+
+Euclidean distance of point 4 to $\mu1$ and $\mu2$. Results show it's closer to $\mu2$.
+
+```{r}
+point4_to_mu1 <- euclidean(c(0,2), p17.table[,4])
+point4_to_mu2 <- euclidean(c(2,0), p17.table[,4])
+p4.assign <- which.min(c(point4_to_mu1, point4_to_mu2))
+```
+
+Euclidean distance of point 5 to $\mu1$ and $\mu2$. Results show it's closer to $\mu5$.
+
+```{r}
+point5_to_mu1 <- euclidean(c(0,2), p17.table[,5])
+point5_to_mu2 <- euclidean(c(2,0), p17.table[,5])
+p5.assign <- which.min(c(point5_to_mu1, point5_to_mu2))
+```
+
+To summarize iteration 1
+
+```{r}
+library(tidyverse)
+iteration1.table <- 
+  data.frame(
+  point = 1:5,
+  x = p17.table[1,],
+  y = p17.table[2,],
+  'distance to mu1' = c(point1_to_mu1, point2_to_mu1, point3_to_mu1, point4_to_mu1, point5_to_mu1),
+  'distance to mu2' = c(point1_to_mu2, point2_to_mu2, point3_to_mu2, point4_to_mu2, point5_to_mu2),
+  'cluster assignment' = c(p1.assign, p2.assign, p3.assign, p4.assign, p5.assign)
+) 
+iteration1.table |> 
+  dplyr::mutate_if(is.numeric, ~round(.x,2)) |> 
+  DT::datatable()
+```
+
+Then I recalculate prototypes:
+
+```{r}
+iteration2.mu1.x <- 
+  iteration1.table |> 
+  filter(cluster.assignment == 1) |> 
+  pull(x) |> 
+  mean()
+iteration2.mu1.y <- 
+  iteration1.table |> 
+  filter(cluster.assignment == 1) |> 
+  pull(y) |> 
+  mean()
+iteration2.mu2.x <- 
+  iteration1.table |> 
+  filter(cluster.assignment == 2) |> 
+  pull(x) |> 
+  mean()
+iteration2.mu2.y <- 
+  iteration1.table |> 
+  filter(cluster.assignment == 2) |> 
+  pull(x) |> 
+  mean()
+
+iteration2.mu1 <- c(iteration2.mu1.x, iteration2.mu1.y)
+iteration2.mu2 <- c(iteration2.mu2.x, iteration2.mu2.y)
+```
+
+```{r}
+iteration1.c1.xy <- iteration1.table[which(iteration1.table$cluster.assignment == 1), c("x","y")]
+iteration1.c2.xy <- iteration1.table[which(iteration1.table$cluster.assignment == 2), c("x","y")]
+WCSS.c1 <- 
+  sum(
+    apply(
+      iteration1.c1.xy, 
+      1, 
+      function(x)WCSS(x, iteration2.mu1)
+      )
+    )
+
+WCSS.c2 <- 
+  sum(
+    apply(
+      iteration1.c2.xy, 
+      1, 
+      function(x)WCSS(x, iteration2.mu2)
+      )
+    )
+
+WCSS.c1+WCSS.c2
+```
+
+The objective function WCSS is `r WCSS.c1+WCSS.c2`
+
+I did the above steps iteratively. 
+
+```{r}
+distance_table <- data.frame(
+    point = 1:5,
+    x = p17.table[1,],
+    y = p17.table[2,],
+    'distance to mu1' = NA,
+    'distance to mu2' = NA,
+    'cluster assignment' = NA
+  )
+
+k.iterate <- function(c1_centroid, c2_centroid){
+  for(i in 1:5){
+    p1_to_mu1_dist <- euclidean(p17.table[,i], c1_centroid)
+    p1_to_mu2_dist <- euclidean(p17.table[,i], c2_centroid)
+    assignment <- which.min(c(p1_to_mu1_dist, p1_to_mu2_dist))
+    distance_table[i,4] <- p1_to_mu1_dist
+    distance_table[i,5] <- p1_to_mu2_dist
+    distance_table[i,6] <- assignment
+  2
+  print(distance_table)
+  c1.new.x <- distance_table  |>  filter(assignment == 1) |> pull(x) |> mean()
+  c1.new.y <- distance_table  |>  filter(assignment == 1) |> pull(y) |> mean()
+  c2.new.x <- distance_table  |>  filter(assignment == 2) |> pull(x) |> mean()
+  c2.new.y <- distance_table  |>  filter(assignment == 2) |> pull(y) |> mean()
+  new.c1.centroid <- c(c1.new.x, c1.new.y)
+  new.c2.centroid <- c(c2.new.x, c1.new.y)
+  
+}
+
+k.iterate(iteration2.mu1, iteration2.mu2)
+```
+
 
 # Problem 18
 
@@ -281,16 +441,20 @@ variance_table <- rbind(variance_scaled, variance_unscaled)
 
 ```{r fig.height=3, fig.width= 6}
 #plot
+facet <- c("Scaled", "Unscaled")
+names(facet) <- c("scaled", "unscaled")
+
 variance_table |> 
   ggplot(aes(x = Dimension, y = variance.percent))+
   geom_bar(stat = "identity", fill = "wheat", color = "black")+
   geom_line(size = 0.5)+
   geom_text(aes(label = round(variance.percent,2)), size = 1.8, vjust = -0.3)+
-  facet_wrap(~label, ncol = 1, scales = "free")+
+  facet_wrap(~label, ncol = 1, scales = "free", labeller = labeller(label = facet))+
+  labs(title = "Scaled and unscaled variance explained by numbers of principal component", y = "Variance Explained")+
   theme(legend.title = element_text(size = 10, family = "mono"),
         legend.text = element_text(size = 8, family = "mono"),
         legend.key = element_rect(fill = "white"),
-        plot.title = element_text(family = "mono"),
+        plot.title = element_text(family = "mono", size  = 10),
         axis.text = element_text(family = "mono"),
         axis.title = element_text(family = "mono"),
         panel.background = element_rect(fill = "white", color = "black"),
@@ -308,16 +472,102 @@ With un-standardized data set, PCA produced results showing PC1 explains 93% of 
 ### Questions
 
 In this task, you will use ordinary least-squares linear regression to predict log10(pSat_Pa) using all variables except parentspecies. Use the random split of mol.csv in files mol_train.csv and mol_validation.csv we have provided.
+
 (i) Train the model on the training set mol_train.csv (without dimensionality reduction) and report the RMSE on the validation set mol_validation.csv.
 
 (ii) Repeat (i) after reducing the dimensionality with PCA for all dimensions ${0, 1, ... , p}$, where 𝑝 is the number of covariates, and report the RMSE values in a table or a plot. How does your model’s performance vary with the (reduced) dimensionality? Is there an “optimal” dimensionality which gives you the best performance on the validation set?
+
 Hint: the dimensionality zero means here that your covariates should consist only of the intercept term (i.e., you have no PCA components).
 
 (iii) What is the smallest dimensionality that gives you a validation set RMSE that is at most 1% larger than the RMSE on dimensionality with the smallest RMSE? Argue why this dimensionality could be a better choice to learn a model than the “optimal” dimensionality you found in subtask (ii) above.
+
 Hint: You can just mention here that the loss you got in subtask (ii) is already the smallest dimensionality within 1% of the best validation loss if this is your result.
+
 Tip: Notice that you can apply PCA on the combined training and validation sets to utilise the structure of the validation set even if you don’t know the class labels; this is a simple form of semi-supervised learning.
 
 ### My answer
+
+```{r}
+# Read the data
+file.name.train <- "mol_train.csv"
+file.name.validation <- "mol_validation.csv"
+
+mol_train <- read_csv(file.path(here::here(), "exercise_sets", "E3", file.name.train))
+mol_validation <- read_csv(file.path(here::here(), "exercise_sets", "E3", file.name.validation))
+```
+
+```{r}
+# Prepare the data
+x_train <- mol_train  |>  select(-parentspecies, -pSat_Pa)
+y_train <- log10(mol_train$pSat_Pa)
+
+x_validation <- mol_validation |>  select(-parentspecies, -pSat_Pa)
+y_validation <- log10(mol_validation$pSat_Pa)
+
+# Linear regression without dimensionality reduction
+fit.initial <- lm(y_train ~ ., data = x_train)
+y_initial_prediction <- predict(fit.initial, newdata = x_validation)
+rmse_initial <- sqrt(mean((y_validation - y_initial_prediction)^2))
+```
+
+```{r}
+RMSE_table <- data.frame(n_dimension = 0:ncol(x_train), RMSE = NA)
+for (p in 0:ncol(x_train)){
+  if (p == 0){
+   fit <- lm(y_train ~ 1)
+   y_prediction <- predict(fit, newdata = x_validation)
+   rmse <- sqrt(mean(y_validation - y_prediction)^2)
+   RMSE_table[1,2] <- rmse
+  } else{
+  pca_fit <- PCA(x_train, ncp = p, graph = FALSE)
+  pca_scores <- pca_fit$ind$coord |> data.frame()
+  fit <- lm(y_train ~ ., data = pca_scores)
+  x_validation_pca <- predict(pca_fit, newdata = x_validation)
+  x_validation_pca_scores <- x_validation_pca$coord |> data.frame()
+  y_prediction <- predict(fit, newdata = x_validation_pca_scores)
+  rmse <- sqrt(mean(y_validation - y_prediction)^2)
+  RMSE_table[p+1,2] <- rmse 
+  }
+}
+
+RMSE_table |> 
+  ggplot(aes(x = n_dimension, y = RMSE)) +
+  geom_line()+
+  labs(title = "Number of dimension vs RMSE", x = "Number of dimensions")+
+  theme(legend.title = element_text(size = 10, family = "mono"),
+        legend.text = element_text(size = 8, family = "mono"),
+        legend.key = element_rect(fill = "white"),
+        plot.title = element_text(family = "mono", size  = 10),
+        axis.text = element_text(family = "mono"),
+        axis.title = element_text(family = "mono"),
+        panel.background = element_rect(fill = "white", color = "black"),
+        legend.position = "bottom",
+        strip.background = element_rect(color = "black", fill = "lightblue")
+        )+
+  geom_point(
+    aes(
+      x = RMSE_table$n_dimension[(RMSE_table$RMSE |> which.min())],
+      y = min(RMSE)
+      ), 
+    color = "red", 
+    size = 8,
+    shape = 21
+    )
+
+```
+
+RMSE_table
+
+```{r}
+min_RMSE <- RMSE_table$RMSE |> min()
+RMSE_table |> 
+  filter(
+    RMSE < min_RMSE*1.1
+  ) |> 
+  filter(
+    n_dimension == min(n_dimension)
+  )
+```
 
 # Problem 21 *[2 points]*
 
@@ -331,8 +581,21 @@ Guiding questions: What did I learn? What did I not understand? Was there someth
 
 ### Answer
 
+The smallest dimensionality that gives me a validation set RMSE that is at most 1% larger than the RMSE on dimensionality with the smallest RMSE is 3.It can be better choice than the best accuracy oen for several reasons:
 
-
+  - It balances between over-fitting and complexity. 
+  
+    The optimal number of dimension is 3, whereas the one with smallest RMSE has 15 dimensions. With such a large number of dimensions, it stands much higher risk of over-fitting.
+    
+  - Fewer-dimension model is less computational expensive.
+  
+  - Fewer-dimension model is robust to variations in the data.
+  
+  - Fewer-dimension model is easier to interpret. In special scenario like factor analysis, researchers may come up with the real-world correspondence to latent feature behind the dimesion. It's easier to do so if the number of dimensionality is limited.
+  
+  
+  
+  
 
 
 
