@@ -1245,11 +1245,9 @@ training dataset?
 
 ### My answer
 
-For 1-NN classifier, the classification boundaries are **4, 5.5, 10.5,
-15.5 and 17**. The classification error is **0**.
+For 1-NN classifier, the classification boundaries are **4, 5.5, 10.5, 15.5 and 17**. The classification error is **0**.
 
-For 3-NN classifier, the classification boundaries are **5.5, 10.5,
-17**. The classification error is **0.143**.
+For 3-NN classifier, the classification boundaries are **10.5**. The classification error is **0.143**.
 
 ## Problem 14 Task b
 

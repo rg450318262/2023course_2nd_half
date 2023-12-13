@@ -1,0 +1,36 @@
+---
+title: "E3"
+output: html_document
+date: "2023-12-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, warning = F, message = F, echo = FALSE)
+```
+
+# Problem 20 *[9 points]*
+
+In this problem, you will apply Principal Component Analysis (PCA) to mol.csv. See Sect. 12.2.4 of ISLR_v2.
+When computing PCA on the data, omit the columns parentspecies and pSat_Pa, and scale the other variables to zero mean and unit variance unless otherwise instructed.
+
+## Problem 20: Task a
+
+### Question
+
+Compute and show a PCA projection of the data into two dimensions.
+Indicate the parent species (column parentspecies) by the point’s colour and shape. Remember to include a legend that indicates which colour/shape corresponds to which class.
+What does the plot imply about the relationship between parentspecies and the other variables?
+
+### My answer
+
+## Problem 20: Task b
+
+### Question
+
+Plot (or report in a table) the proportion of variance explained (PVE), and the cumulative PVE for the principal components for scaled and unscaled data.
+Why does it seem that fewer components explain a large proportion of the variance for unscaled data compared to the scaled data?
+
+### My answer
+
+#
+
