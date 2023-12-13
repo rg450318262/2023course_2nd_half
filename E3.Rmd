@@ -67,7 +67,6 @@ text(p17.table |> t() |> data.frame()|> dplyr::pull(x),
 
 Sketch a run of the (naive) k-means algorithm using 𝐾 = 2 and initial prototype (mean) vectors 𝜇1 = (0, 2) and 𝜇2 = (2, 0). Write down the calculation procedure at each iteration and report the cluster memberships, the prototype vectors, and the value of the objective function at each iteration.
 
-
 # Problem 18
 
 ## Problem 18: Task a
@@ -112,7 +111,8 @@ Make a histogram of the losses.
 
 Task c
 (i) Cluster the data with agglomerative hierarchical clustering using single, complete, and Ward linkage. Produce their dendrograms side-by-side.
-(ii) Find and report at least one interesting feature or reproduce some properties of hierarchical clustering discussed in the class or the textbook. For example, you can show differences be- tween the linkage functions by comparing cluster sizes in different flat clusterings (cutree in R, scipy.cluster.hierarchy.cut_tree in Python).
+
+(ii) Find and report at least one interesting feature or reproduce some properties of hierarchical clustering discussed in the class or the textbook. For example, you can show differences between the linkage functions by comparing cluster sizes in different flat clusterings (cutree in R, scipy.cluster.hierarchy.cut_tree in Python).
 
 ### answer
 
@@ -131,12 +131,175 @@ What does the plot imply about the relationship between parentspecies and the ot
 
 ### My answer
 
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(FactoMineR)
+# Read the data
+file.name <- "mol.csv"
+
+mol <- read_csv(file.path(here::here(), "exercise_sets", "E3", file.name))
+# scale all cols but parentspecies and pSat_Pa
+mol_unscaled<- mol  |>  
+  mutate(
+    across(
+      !c(
+        parentspecies, 
+        pSat_Pa
+        ),
+      as.numeric
+      )
+  )
+
+mol_scaled <- mol  |>  
+  mutate(
+    across(
+      !c(
+        parentspecies, 
+        pSat_Pa
+        ),
+      ~scale(as.numeric(.))
+      )
+  )
+```
+
+```{r}
+selected.cols.pca <- 
+  mol_scaled |> 
+  dplyr::select(
+    -parentspecies, 
+    -pSat_Pa
+    ) |> 
+  names() 
+   
+# Do PCA
+pca_output <- 
+  PCA(
+    mol_scaled |> select(one_of(selected.cols.pca)), 
+    graph = FALSE
+    )
+
+#extract coordinates
+pca_coord <- pca_output$ind$coord |> data.frame()
+
+# append parentspecies col
+
+pca_coord$parentspecies <- factor(mol$parentspecies)
+
+# Plotting the PCA
+## n of levels for parentspecies
+n_category <- length(unique(pca_coord$parentspecies))
+##color scheme
+library(wesanderson)
+## plot
+pca_coord |> 
+  ggplot(
+    aes(
+      x = Dim.1, 
+      y = Dim.2, 
+      color = parentspecies
+      )
+  ) +
+  geom_point(shape = 21, color = "black") +
+  geom_point(alpha = 0.5, shape = 10) +
+  scale_color_manual(
+    #values = wes_palette(n = 3, name = "FantasticFox1"),
+    values = c("red", "blue", "yellow"),
+    name = "Parent Species"
+    ) +
+  labs(title = "PCA Projection with Parent Species",
+       x = "Principal Component 1",
+       y = "Principal Component 2") +
+  theme(legend.title = element_text(size = 10, family = "mono"),
+        legend.text = element_text(size = 8, family = "mono"),
+        legend.key = element_rect(fill = "white"),
+        plot.title = element_text(family = "mono"),
+        axis.text = element_text(family = "mono"),
+        axis.title = element_text(family = "mono"),
+        panel.background = element_rect(fill = "white", color = "black"),
+        legend.position = "bottom"
+        )+
+  coord_fixed()
+
+```
+
+Although there's considerable overlap between points of different Parent Species, noticeable patterns exist in the distribution of the points along the principal component axes: 
+
+  -Species 'decane' and 'toluene' forms different clusters, suggesting they have unique molecular signatures that are captured by
+  the principal components. 
+  
+  -Species `decane` and `apin` are clustered less distinctively than they are to species `toluene`, indicating share certain
+  molecular characteristics that are significantly
+  different from `toluene` in terms of features captured by PC1 and PC2.
+  
+  -Species `toluene` distributed across both PCs evenly,indicating its molecular properties with highest variance can be equally
+  and nicely represented by PC1 and PC2 nicely. 
+  
+  -Whereas, species `decane` and `apin` distribute mostly across the right end of PC1 axis and lower end of PC2 axis, suggesting
+   most varying features are captured by a portion of PC1 and PC2 and these portions play a role in differentiating them from
+   `toluene`
+
+
 ## Problem 20: Task b
 
 ### Question
 
-Plot (or report in a table) the proportion of variance explained (PVE), and the cumulative PVE for the principal components for scaled and unscaled data.
-Why does it seem that fewer components explain a large proportion of the variance for unscaled data compared to the scaled data?
+Plot (or report in a table) the proportion of variance explained (PVE), and the cumulative PVE for the principal components for scaled and un-scaled data.
+
+Why does it seem that fewer components explain a large proportion of the variance for un-scaled data compared to the scaled data?
+
+```{r}
+#scaled pca results
+pca_output_scaled <- 
+  PCA(
+    mol_scaled |> select(one_of(selected.cols.pca)), 
+    graph = FALSE
+    )
+#un-scaled pca results
+pca_output_unscaled <- 
+  PCA(
+    mol_unscaled |> select(one_of(selected.cols.pca)), 
+    scale.unit = F,
+    graph = FALSE
+    )
+
+#libarary to extract variance
+library(factoextra)
+
+#get variances
+variance_scaled <- get_eigenvalue(pca_output_scaled) |> data.frame()
+variance_scaled$Dimension <-1:nrow(variance_scaled)
+variance_scaled$label <- "scaled"
+
+
+variance_unscaled <- get_eigenvalue(pca_output_unscaled) |> data.frame()
+variance_unscaled$Dimension <- 1:nrow(variance_unscaled)
+variance_unscaled$label <- "unscaled"
+
+variance_table <- rbind(variance_scaled, variance_unscaled)
+```
+
+```{r fig.height=3, fig.width= 6}
+#plot
+variance_table |> 
+  ggplot(aes(x = Dimension, y = variance.percent))+
+  geom_bar(stat = "identity", fill = "wheat", color = "black")+
+  geom_line(size = 0.5)+
+  geom_text(aes(label = round(variance.percent,2)), size = 1.8, vjust = -0.3)+
+  facet_wrap(~label, ncol = 1, scales = "free")+
+  theme(legend.title = element_text(size = 10, family = "mono"),
+        legend.text = element_text(size = 8, family = "mono"),
+        legend.key = element_rect(fill = "white"),
+        plot.title = element_text(family = "mono"),
+        axis.text = element_text(family = "mono"),
+        axis.title = element_text(family = "mono"),
+        panel.background = element_rect(fill = "white", color = "black"),
+        legend.position = "bottom",
+        strip.background = element_rect(color = "black", fill = "lightblue")
+        )
+```
+
+With un-standardized data set, PCA produced results showing PC1 explains 93% of the variability of the data set; other components’ contribution is less the 7%, in totality . With standardized data set, PC1 and PC2 together explains 35% of the variability of the data set, with the amount of variability explained falling gradually for the components following. Base on finding above, it is not hard to draw the conclusion that PCA using standardized data set produces results better for analysis. Possible explanation for this is the different scales of the variables make comparison between pairs of features difficult. PCA is calculated based on co-variance. Unlike correlation, which is dimensionless, covariance is in units obtained by multiplying the units of the two variables. When data set is not scaled, this makes each variable not easily comparable with others (since they all have their own value ranges). Further, each variable loads almost exclusively on one components because they can hardly find another variable with comparable value range. 
 
 ### My answer
 

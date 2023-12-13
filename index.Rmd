@@ -15,9 +15,9 @@ output:
 
 ***
 
-# E2
+# E3
 
-```{r child = "E2_assignment_nocode.Rmd"}
+```{r child = "E3.Rmd"}
 ```
   
 ***
