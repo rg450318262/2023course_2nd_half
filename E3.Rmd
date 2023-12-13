@@ -8,6 +8,114 @@ date: "2023-12-11"
 knitr::opts_chunk$set(collapse = TRUE, warning = F, message = F, echo = FALSE)
 ```
 
+# Problem 17 *[9 points]*
+
+Objectives: k-means loss and Lloyd’s algorithm
+
+In this problem, you will study the (naive) k-means algorithm (Lloyd’s algorithm). You should be able to solve this problem with a pen and paper. See Section 12.4.1 of ISLR_v2.
+
+
+## Problem 17: Task a
+
+### Question
+
+Answer the following:
+
+1. For what kinds of tasks can we use the k-means algorithm? 2. What are the algorithm’s inputs and outputs?
+
+3. How should you interpret the results?
+
+### Answer
+
+## Problem 17: Task b
+
+### Question
+
+Define the objective (or cost) function the k-means algorithm tries to minimise.
+
+What can you say about the objective function’s value during the algorithm iteration?
+
+### Answer
+
+## Problem 17: Task c
+
+### Question
+
+Consider the following toy data set:
+
+```{r}
+p17.table <- 
+  matrix(
+    c(0,1,4,5,5,
+      1,2,5,3,4),
+    byrow = T,
+    nrow = 2,
+    ncol = 5
+  )
+colnames(p17.table) <- 1:5
+rownames(p17.table) <- c("x","y")
+p17.table |> 
+  DT::datatable()
+```
+
+```{r fig.height=3.5, fig.width=3}
+p17.table |> t() |> plot(cex =0.1)
+text(p17.table |> t() |> data.frame()|> dplyr::pull(x), 
+     p17.table |> t() |> data.frame()|> dplyr::pull(y),
+     labels = p17.table |> t() |> row.names())
+```
+
+Sketch a run of the (naive) k-means algorithm using 𝐾 = 2 and initial prototype (mean) vectors 𝜇1 = (0, 2) and 𝜇2 = (2, 0). Write down the calculation procedure at each iteration and report the cluster memberships, the prototype vectors, and the value of the objective function at each iteration.
+
+
+# Problem 18
+
+## Problem 18: Task a
+
+# Problem 19 *[9 points]*
+
+Objectives: practical application of k-means and hierarchical clustering
+For this problem, you will apply clustering on a subset of the project data (mol.csv). See Section 12.5.3 of ISLR_v2.
+When clustering the data, omit the columns parentspecies and pSat_Pa, and scale the other variables to zero mean and unit variance unless otherwise instructed.
+You should use library functions, such as kmeans in R and sklearn.cluster.KMeans in Python. Note: In R, kmeans uses the Hartigan-Wong algorithm by default, so set algorithm="Lloyd" to use Lloyd’s algorithm. Python’s KMeans uses kmeans++ as the default initialization, so set init="random" to use random initialisation in Task b.
+
+## Problem 19: Task a 
+
+### Question
+
+Plot (or report in a table) the k-means loss as a function of the number of clusters from 1 to 20 for scaled and non-scaled data.
+Should you scale the columns? How does scaling the columns affect the result?
+
+### Answer
+
+## Problem 19: Task b
+
+### Question
+
+The initialisation of k-means can affect the solution.
+
+Cluster the data with k-means using 𝑘 = 5 with 1000 different random initialisations, and then answer the following:
+
+• What are the minimum and maximum k-means losses for your 1000 random initialisations?
+
+• How many initialisations would you expect to have to obtain one reasonably good loss for this data set and number of clusters? A suﬀiciently good loss here is a solution with a loss within 1% of the best loss out of your 1000 losses.
+
+• How do we deal with the effect of initialization when using k-means in practice?
+
+Make a histogram of the losses.
+
+### My answer
+
+## Problem 19: Task c
+
+### Question
+
+Task c
+(i) Cluster the data with agglomerative hierarchical clustering using single, complete, and Ward linkage. Produce their dendrograms side-by-side.
+(ii) Find and report at least one interesting feature or reproduce some properties of hierarchical clustering discussed in the class or the textbook. For example, you can show differences be- tween the linkage functions by comparing cluster sizes in different flat clusterings (cutree in R, scipy.cluster.hierarchy.cut_tree in Python).
+
+### answer
+
 # Problem 20 *[9 points]*
 
 In this problem, you will apply Principal Component Analysis (PCA) to mol.csv. See Sect. 12.2.4 of ISLR_v2.
@@ -32,5 +140,39 @@ Why does it seem that fewer components explain a large proportion of the varianc
 
 ### My answer
 
-#
+## Problem 20: Task c
+
+### Questions
+
+In this task, you will use ordinary least-squares linear regression to predict log10(pSat_Pa) using all variables except parentspecies. Use the random split of mol.csv in files mol_train.csv and mol_validation.csv we have provided.
+(i) Train the model on the training set mol_train.csv (without dimensionality reduction) and report the RMSE on the validation set mol_validation.csv.
+
+(ii) Repeat (i) after reducing the dimensionality with PCA for all dimensions ${0, 1, ... , p}$, where 𝑝 is the number of covariates, and report the RMSE values in a table or a plot. How does your model’s performance vary with the (reduced) dimensionality? Is there an “optimal” dimensionality which gives you the best performance on the validation set?
+Hint: the dimensionality zero means here that your covariates should consist only of the intercept term (i.e., you have no PCA components).
+
+(iii) What is the smallest dimensionality that gives you a validation set RMSE that is at most 1% larger than the RMSE on dimensionality with the smallest RMSE? Argue why this dimensionality could be a better choice to learn a model than the “optimal” dimensionality you found in subtask (ii) above.
+Hint: You can just mention here that the loss you got in subtask (ii) is already the smallest dimensionality within 1% of the best validation loss if this is your result.
+Tip: Notice that you can apply PCA on the combined training and validation sets to utilise the structure of the validation set even if you don’t know the class labels; this is a simple form of semi-supervised learning.
+
+### My answer
+
+# Problem 21 *[2 points]*
+
+## Problem 21: Task a
+
+### Question
+
+Write a learning diary of the topics of lectures 9–10 and this exercise set.
+
+Guiding questions: What did I learn? What did I not understand? Was there something relevant to other studies or (future) work? Your reply should be 1-3 paragraphs of text. You can also give feedback on the course.
+
+### Answer
+
+
+
+
+
+
+
+
 
