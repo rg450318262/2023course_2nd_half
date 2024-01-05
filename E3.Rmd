@@ -37,7 +37,6 @@ Define the objective (or cost) function the k-means algorithm tries to minimise.
 
 What can you say about the objective function’s value during the algorithm iteration?
 
-
 ### Answer
 
 The k-means algorithm aims to minimize an objective function known as the within-cluster sum of squares (WCSS) or inertia. This objective function quantifies the variance within each cluster and is defined as the sum of squared distances between each data point and the centroid of its assigned cluster. Mathematically, the WCSS objective function can be expressed as follows:
@@ -201,7 +200,7 @@ distance_table <- data.frame(
     y = p17.table[2,],
     'distance to mu1' = NA,
     'distance to mu2' = NA,
-    'cluster assignment' = NA
+    'cluster' = NA
   )
 
 k.iterate <- function(c1_centroid, c2_centroid){
@@ -212,20 +211,65 @@ k.iterate <- function(c1_centroid, c2_centroid){
     distance_table[i,4] <- p1_to_mu1_dist
     distance_table[i,5] <- p1_to_mu2_dist
     distance_table[i,6] <- assignment
-  2
+    }
   print(distance_table)
-  c1.new.x <- distance_table  |>  filter(assignment == 1) |> pull(x) |> mean()
-  c1.new.y <- distance_table  |>  filter(assignment == 1) |> pull(y) |> mean()
-  c2.new.x <- distance_table  |>  filter(assignment == 2) |> pull(x) |> mean()
-  c2.new.y <- distance_table  |>  filter(assignment == 2) |> pull(y) |> mean()
+  c1.new.x <- distance_table  |>  filter(cluster == 1) |> pull(x) |> mean()
+  c1.new.y <- distance_table  |>  filter(cluster == 1) |> pull(y) |> mean()
+  c2.new.x <- distance_table  |>  filter(cluster == 2) |> pull(x) |> mean()
+  c2.new.y <- distance_table  |>  filter(cluster == 2) |> pull(y) |> mean()
   new.c1.centroid <- c(c1.new.x, c1.new.y)
   new.c2.centroid <- c(c2.new.x, c1.new.y)
   
+  WCSS.c1 <- 
+  sum(
+    apply(
+      distance_table[,c("x", "y")], 
+      1, 
+      function(x)WCSS(x, new.c1.centroid)
+      )
+    )
+  
+  WCSS.c1 <- 
+  sum(
+    apply(
+      distance_table[,c("x", "y")], 
+      1, 
+      function(x)WCSS(x, new.c2.centroid)
+      )
+    )
+  sum_WCSS <- WCSS.c1+WCSS.c2
+  
+  result <- list(
+    sum_WCSS = sum_WCSS,
+    new.c1.centroid = new.c1.centroid,
+    new.c2.centroid = new.c2.centroid
+  )
+  return(result)
 }
-
-k.iterate(iteration2.mu1, iteration2.mu2)
 ```
 
+Repeat the process for the second iteration using new centroids. I get a WCSS of 62.13889
+
+```{r}
+a <- k.iterate(iteration2.mu1, iteration2.mu2)
+a$sum_WCSS
+```
+
+Repeat the process for the third iteration using new centroids.I get a WCSS of 62.13889
+
+```{r}
+b <- k.iterate(a$new.c1.centroid, a$new.c2.centroid)
+b$sum_WCSS
+```
+
+Repeat the process for the fourth iteration using new centroids.I get a WCSS of 62.13889
+
+```{r}
+c <- k.iterate(b$new.c1.centroid, b$new.c2.centroid)
+c$sum_WCSS
+```
+
+The WCSS converges at 62.13889. 
 
 # Problem 18
 
@@ -234,8 +278,10 @@ k.iterate(iteration2.mu1, iteration2.mu2)
 # Problem 19 *[9 points]*
 
 Objectives: practical application of k-means and hierarchical clustering
+
 For this problem, you will apply clustering on a subset of the project data (mol.csv). See Section 12.5.3 of ISLR_v2.
 When clustering the data, omit the columns parentspecies and pSat_Pa, and scale the other variables to zero mean and unit variance unless otherwise instructed.
+
 You should use library functions, such as kmeans in R and sklearn.cluster.KMeans in Python. Note: In R, kmeans uses the Hartigan-Wong algorithm by default, so set algorithm="Lloyd" to use Lloyd’s algorithm. Python’s KMeans uses kmeans++ as the default initialization, so set init="random" to use random initialisation in Task b.
 
 ## Problem 19: Task a 
@@ -243,9 +289,74 @@ You should use library functions, such as kmeans in R and sklearn.cluster.KMeans
 ### Question
 
 Plot (or report in a table) the k-means loss as a function of the number of clusters from 1 to 20 for scaled and non-scaled data.
+
 Should you scale the columns? How does scaling the columns affect the result?
 
 ### Answer
+
+```{r}
+file.name <- "mol.csv"
+#read in data
+mol <- read_csv(file.path(here::here(), "exercise_sets", "E3", file.name))
+#remove two cols as required by the question
+mol_mius_two_cols <- 
+  mol |> 
+  dplyr::select(
+    -parentspecies,
+    -pSat_Pa
+  )
+#create scaled and un-scaled versions of the data
+mol_scaled <- scale(mol_mius_two_cols)
+mol_unscaled <- mol_mius_two_cols
+```
+
+
+```{r}
+#create a table for saving k-means loss, with 20 cells
+loss.table <-
+  data.frame(
+    n_cluster = 1:20,
+    Scaled = numeric(20),
+    Unscaled = numeric(20)
+  )
+#loop through 1 to 20 clusters
+for (k in 1:20){
+  # do kmeans clustering for scaled and unscaled data,respectively
+  kmeans_scaled_output <- kmeans(mol_scaled, centers = k, nstart = 25, algorithm = "Lloyd")
+  kmeans_unscaled_output <- kmeans(mol_unscaled, centers = k, nstart = 25, algorithm = "Lloyd")
+  # calculate k-means loss function
+  loss.table[k,2] <- kmeans_scaled_output$tot.withinss
+  loss.table[k,3] <- kmeans_unscaled_output$tot.withinss
+}
+loss.table |> 
+  pivot_longer(
+    cols = -n_cluster,
+    names_to = "name",
+    values_to = "value"
+  ) |> 
+  ggplot(aes(x = n_cluster, y = value)) +
+  geom_bar(stat = "identity", fill = "wheat", color = "black")+
+  geom_line(size = 0.6)+
+  geom_text(aes(label = value |> round(2)), size = 2,  angle = 90, hjust = -0.1)+
+  facet_wrap(~name, ncol = 1, scale = "free") +
+  labs(
+    title = "K-means loss by number of clusters",
+    x = "Number of clusters",
+    y =  "Loss"
+  )+
+  theme(legend.title = element_text(size = 10, family = "mono"),
+        legend.text = element_text(size = 8, family = "mono"),
+        legend.key = element_rect(fill = "white"),
+        plot.title = element_text(family = "mono", size  = 10),
+        axis.text = element_text(family = "mono"),
+        axis.title = element_text(family = "mono"),
+        panel.background = element_rect(fill = "white", color = "black"),
+        legend.position = "bottom",
+        strip.background = element_rect(color = "black", fill = "lightblue")
+        )
+
+```
+
 
 ## Problem 19: Task b
 
@@ -253,7 +364,7 @@ Should you scale the columns? How does scaling the columns affect the result?
 
 The initialisation of k-means can affect the solution.
 
-Cluster the data with k-means using 𝑘 = 5 with 1000 different random initialisations, and then answer the following:
+Cluster the data with k-means using $k = 5$ with 1000 different random initialisations, and then answer the following:
 
 • What are the minimum and maximum k-means losses for your 1000 random initialisations?
 
@@ -265,16 +376,70 @@ Make a histogram of the losses.
 
 ### My answer
 
+```{r}
+# set k, number of initialization and size of loss vector
+k <- 5
+n_initialization <- 1000
+loss.table <- numeric(n_init)
+# loop through 1000 initialization, each do k-means with 1 random set
+for (i in 1:n_initialization) {
+  set.seed(i) # For reproducibility
+  kmeans_output <- kmeans(mol_scaled, centers = k, nstart = 1, algorithm = "Lloyd")
+  loss.table[i] <- kmeans_output$tot.withinss
+}
+
+#find case within 1% best
+good_loss_cutoff <- min(loss.table)*1.01
+sum(loss.table <= good_loss_cutoff)
+
+1/(28/1000)
+```
+
+So I need to do 36 initialisations.
+
 ## Problem 19: Task c
 
 ### Question
 
 Task c
+
 (i) Cluster the data with agglomerative hierarchical clustering using single, complete, and Ward linkage. Produce their dendrograms side-by-side.
 
 (ii) Find and report at least one interesting feature or reproduce some properties of hierarchical clustering discussed in the class or the textbook. For example, you can show differences between the linkage functions by comparing cluster sizes in different flat clusterings (cutree in R, scipy.cluster.hierarchy.cut_tree in Python).
 
 ### answer
+
+```{r}
+library(cluster)
+library(factoextra) 
+
+
+# Hierarchical clustering with different linkages
+hc_single <- hclust(dist(mol_scaled), method = "single")
+hc_complete <- hclust(dist(mol_scaled), method = "complete")
+hc_ward <- hclust(dist(mol_scaled), method = "ward.D2")
+```
+
+```{r fig.height=3 fig.width=20}
+par(mfrow = c(3, 1)) # Layout for 3 plots in a row
+plot(hc_single, main = "Single Linkage", sub = "", cex = 0.6)
+plot(hc_complete, main = "Complete Linkage", sub = "", cex = 0.6)
+plot(hc_ward, main = "Ward Linkage", sub = "", cex = 0.6)
+```
+
+
+```{r}
+# Cutting the dendrogram at a certain height
+cut_height = 0.5 # adjust as needed
+clusters_single = cutree(hc_single, h = cut_height)
+clusters_complete = cutree(hc_complete, h = cut_height)
+clusters_ward = cutree(hc_ward, h = cut_height)
+
+# Analyzing the cluster sizes
+table(clusters_single)
+table(clusters_complete)
+table(clusters_ward)
+```
 
 # Problem 20 *[9 points]*
 

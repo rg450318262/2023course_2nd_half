@@ -1,0 +1,530 @@
+---
+title: "Statistical report for Dualscan body fat measurement consistency study"
+output: pdf_document
+date: "2023-12-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, warning = F, message = F, echo = FALSE)
+```
+
+# Data
+
+
+
+```{r}
+library(easypackages)
+
+pacakges_used <- 
+  c(
+    "easypackages",
+    "tidyverse",
+    "here",
+    "XLConnect",
+    "readxl",
+    "vtable",
+    "psych",
+    "finalfit"
+  )
+
+libraries(pacakges_used)
+```
+
+## Quality control in reading daata
+
+The data was initially recorded into a pre-designed, structured EHR via Microsoft Excel. To ensure the precision in reading the data into the analysis environment, the process was automated by specifying the cells to read and their corresponding variable names.
+
+```{r}
+#install.packages("XLConnect")
+library(XLConnect)
+library(readxl)
+wb <- loadWorkbook("dualscan.xlsx")
+
+# fasting visceral fat, 10 measurements
+
+data <- data.frame()
+
+sheets <- excel_sheets(path = "dualscan.xlsx")
+
+for (i in 1:(length(sheets)-4)){
+  
+  data.fasting.visceral <- 
+  readWorksheet(wb, sheet = i+4, startCol = 2, endCol = 3, startRow = 14, endRow = 24) |> 
+  rename(
+    times = 1,
+    fat = 2
+  ) |> 
+  mutate(
+    time_window = "fasting",
+    times = substring(times, 5,5),
+    times = ifelse(times == "0", "10", times),
+    times = as.factor(times),
+    fat_type = "visceral"
+    ) 
+# fasting abdominal fat, 10 measurements
+data.fasting.abd <- 
+  readWorksheet(wb, sheet = i+4, startCol = 4, endCol = 4, startRow = 14, endRow = 24) |> 
+  rename(
+    fat = 1
+  ) |> 
+  mutate(
+    fat = as.numeric(fat),
+    time_window = "fasting",
+    fat_type = "abdomen",
+    times = 1:10
+    ) 
+
+
+# postmeal visceral fat, 10 measurements
+data.postmeal.visceral <- 
+  readWorksheet(wb, sheet = i+4, region = "E14:F24") |> 
+  rename(
+    times = 1,
+    fat = 2
+  ) |> 
+  mutate(
+    time_window = "postmeal",
+    times = substring(times, 5,5),
+    times = ifelse(times == "0", "10", times),
+    times = as.factor(times),
+    fat_type = "visceral"
+    ) 
+# postmeal abdominal fat, 10 measurements
+data.postmeal.abd <- 
+  readWorksheet(wb, sheet = i+4, region = "G14:G24") |> 
+  rename(
+    fat = 1
+  ) |> 
+  mutate(
+    fat = as.numeric(fat),
+    time_window = "postmeal",
+    fat_type = "abdomen",
+    times = 1:10
+    ) 
+#extract gender 
+data.gender <- readWorksheet(wb, sheet = i+4, region = "C2:C3") |> 
+  rename(col1 = 1) |> 
+  mutate(col1= ifelse(col1 == "M", "Male", "Female")) |> 
+  rename(gender = 1)
+#extract BMI
+data.BMI <- readWorksheet(wb, sheet = i+4, region = "G4:G5") |> 
+  round(3) |> 
+  rename(BMI = 1) 
+#extract birth
+data.birth <- readWorksheet(wb, sheet = i+4, region = "F2:F3") |> 
+  rename(col1 = 1) |> 
+  mutate(col1 = substring(col1, 1,4))|> 
+  mutate_if(is.character, as.numeric)
+
+#extract ID
+sheet.names <- excel_sheets(path = "dualscan.xlsx")
+
+data.ID <- sheet.names[i+4]
+
+# bind all values for one subject
+data.fat <- 
+  rbind(data.fasting.visceral, data.fasting.abd, data.postmeal.visceral, data.postmeal.abd) |> 
+  mutate(
+    ID = data.ID,
+    gender = data.gender[[1]],
+    BMI = data.BMI[[1]],
+    age = 2023 - as.numeric(data.birth)
+  ) |> 
+  dplyr::select(
+    ID,
+    gender,
+    age,
+    BMI,
+    times,
+    time_window,
+    fat_value = fat,
+    everything()
+  )
+
+#bind the subject data with the previous one(s)
+data <- rbind(data, data.fat)
+}
+dualscan <- data |> 
+  mutate(ID = as.factor(ID))
+
+```
+
+## Data
+
+The data frame read into environment includes eight columns:
+
+-   ID: the unique identifier of each subject
+
+    Multiple rows can have same IDs, since each row in the data corresponds to a piece of measurement among 20 repeats of testing (10 for visceral, 10 for abdominal).
+
+-   gender: gender of the subjects
+
+-   age: age of the subjects, calculated by:
+
+$$
+Age = 2023 - \text{Year of Birth}
+$$
+
+-   BMI: Body mass index of the subjects, calculated by:
+
+$$
+BMI = \frac{\text{weight (kg)}}{\text{height (m)}^2}
+$$
+
+-   times: An ordered number distinguishing the time for each repeat among each subject. The value ranges from 1 to 10.
+
+-   time_window: record when the measurement was taken, i.e., fasting or post-meal.
+
+-   fat_value: record the body-fat area ($cm^2$) obtained in each measurement
+
+-   fat_type: record the region of measuring, i.e., visceral or abdominal.
+
+Below is a subset of data for first 5 measures of subject 0202. To exemplify using an example, the first row indicates subject 0202 is a female whose age is 35 year old. Her BMI is 23.384. The first measures at the time window of post-meal for her abdomen body-fat area was 163$cm^2$
+
+```{r}
+dualscan |> 
+  filter(ID == "0202") |> 
+  head(5) |> 
+  kable(
+    format = "latex",
+    booktabs = TRUE, 
+    escape = TRUE, 
+    digits = 5,
+    caption = "Subset of the data"
+    ) |> 
+  kable_styling(full_width = TRUE)
+```
+
+## Demographics
+
+Table 2 shows the age and BMI of the participants by genders. The subjects did not show significant difference in age and BMI across genders. For other summary statistics, see table 3, and figure 1. 
+
+```{r}
+dualscan_demo <- 
+  dualscan |> 
+  group_by(
+    ID,
+    gender
+  ) |> 
+  summarise(
+    age = mean(age),
+    BMI = mean(BMI)
+  ) 
+```
+
+```{r}
+library(finalfit)
+explanatory = c("age", "BMI")
+dependent = "gender"
+dualscan_demo |> 
+  summary_factorlist(dependent, explanatory, p = T) |> 
+  dplyr::select(
+    ' ' = label,
+    'Female(n=4)†' = Female,
+    'Male(n=4)†' = Male, 
+    'p*' = p
+  ) |> 
+  kable(
+    format = "latex",
+    booktabs = T,
+    align = "lrrr",
+    escape = T,
+    caption = "Age and BMI of the subjects by gender"
+  ) |> 
+  kable_styling(
+    #full_width = T
+  ) |> 
+  footnote(
+    symbol = c("mean(sd)","t test")
+  )
+```
+
+```{r}
+male.summary <- 
+  dualscan |> 
+  group_by(
+    ID,
+    gender,
+    BMI
+    ) |> 
+  summarise(
+    age = mean(age)
+  ) |> 
+  as.data.frame() |> 
+  dplyr::select(
+    -ID
+  ) |> 
+  filter(
+    gender == "Male"
+  ) |> 
+  dplyr::select(BMI, age) |> 
+  describe()
+
+female.summary <- 
+  dualscan |> 
+  group_by(
+    ID,
+    gender,
+    BMI
+    ) |> 
+  summarise(
+    age = mean(age)
+  ) |> 
+  as.data.frame() |> 
+  dplyr::select(
+    -ID
+  ) |> 
+  filter(
+    gender == "Female"
+  ) |> 
+  dplyr::select(BMI, age) |> 
+  describe()
+
+summary <- rbind(male.summary, female.summary)
+rownames(summary) <- NULL
+
+summary |> 
+  as.data.frame() |> 
+  mutate(
+    vars = ifelse(vars == 1, "BMI", "age")
+  ) |> 
+  mutate_if(is.numeric, function(x)round(x, 3))|> 
+  kable(
+    booktabs = T,
+    format = "latex",
+    escape = T,
+    caption = "Summary statistics for BMI and age"
+  ) 
+```
+
+
+
+```{r, fig.width=4, fig.height=3}
+dualscan |> 
+  group_by(
+    ID,
+    gender,
+    BMI
+    ) |> 
+  summarise(
+    age = mean(age)
+  ) |> 
+  ungroup() |> 
+  pivot_longer(
+    cols = 3:4,
+    names_to = "name",
+    values_to = "value"
+  ) |> 
+  ggplot(
+    aes(x = gender, y = value)
+  )+
+  geom_boxplot()+
+  facet_wrap(~name, ncol = 1, scales = "free") +
+  theme_bw() +
+  labs(
+    x = "",
+    title = "Figure 1. Age and BMI distribution of the subjects"
+       ) +
+  theme(
+    plot.title = element_text(size = 9)
+  )
+  
+```
+ 
+# Analysis
+
+## Checking fat area measurements
+
+Before checking CV, we observed the measured fat areas to check if there is any anomaly. Figure 2 shows the Subject-level average of fat areas. No extremely large or small fat area values were observed. The orders of fasting and post-meal fat area are consistent with each other, providing preliminary evidence for measuring robustness. 
+
+```{r}
+dualscan_summary <- 
+  dualscan |> 
+  group_by(
+    ID, 
+    time_window,
+    fat_type,
+    gender,
+    BMI,
+    age
+    ) |> 
+  summarise(
+    mean_fat = mean(fat_value), 
+    sd_fat = sd(fat_value),
+    cv_fat = sd_fat/mean_fat,
+    cv_fat = sd_fat/mean_fat
+    ) |> 
+  dplyr::select(
+    ID,
+    gender,
+    age,
+    BMI,
+    everything()
+  )|> 
+  mutate_if(is.numeric, function(x)round(x,3)) |> 
+  as.data.frame()
+```
+
+```{r}
+dualscan_summary|> 
+  ggplot(
+    aes(
+      x = ID, 
+      y = mean_fat, 
+      fill = time_window
+    )
+  )+
+  geom_bar(
+    position = position_dodge(),
+    stat = "identity",
+    color = "black"
+  ) +
+  geom_errorbar(aes(
+    ymin = mean_fat - sd_fat,
+    ymax = mean_fat + sd_fat
+  ),
+  width = 0.2,
+  position = position_dodge(0.9)
+  )+
+  labs(
+    x = "Subject",
+    y = "Fat (+/- 1*sd)",
+    title = "Figure 2. Subject-level average of fat areas"
+  )+
+  facet_grid(fat_type~gender, scales = "free")+
+  theme_bw()+
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+
+## Coefficients of Variation (CV)
+
+### Subject-level CV
+
+
+
+```{r}
+ID <- dualscan_summary$ID |> unique()
+ID <- paste("ID", ID)
+```
+
+Table 4 shows the summary statistics (mean, sd, cv) of the 10 repeats for each subject by measuring time and region. CVs(last column) with value > 5.6% are considered as low consistency and marked with asterisks ("*"). Eighteen out of 32 CVs had unacceptably low consistency, most of which were for measuring visceral fat, regardless of fasting or postmeal.
+
+```{r}
+linesep<-function(x,y=character()){
+  if(!length(x))
+    return(y)
+  linesep(x[-length(x)], c(rep('',x[length(x)]-1),'\\addlinespace',y))  
+}
+
+dualscan_summary_marked <- 
+  dualscan_summary |> 
+  mutate(
+    cv_fat = 
+      if_else(
+        cv_fat > 0.056,
+        paste0(cv_fat*100, "%*"),
+        paste0(cv_fat*100, "%")
+      )
+  )
+```
+
+```{r}
+dualscan_summary_marked |> 
+  dplyr::select(
+    -"ID"
+    ) |> 
+  rename(
+    mean = mean_fat,
+    sd = sd_fat,
+    CV = cv_fat,
+    time = time_window
+  ) |> 
+  kable(
+    format = "latex",
+    booktabs = T,
+    escape = T,
+    caption = 
+      "Summary of 10 repeats for each subject by measuring time and region",
+    linesep = linesep(c(4,4,4,4,4,4,4,4)),
+    align = "lrrllrrr"
+  ) |> 
+  kable_styling(
+    full_width = T,
+    bootstrap_options = "condensed"
+  ) |> 
+  add_header_above(
+    c(
+      "Demographics" = 3,
+      "Measuring context" = 2,
+      "Fat area, summary of 10 repeats" = 3
+    )
+  ) |> 
+  pack_rows(ID[1], 1,4) |> 
+  pack_rows(ID[2], 5,8) |> 
+  pack_rows(ID[3], 9,12) |> 
+  pack_rows(ID[4], 13,16) |> 
+  pack_rows(ID[5], 17,20) |> 
+  pack_rows(ID[6], 21,24) |> 
+  pack_rows(ID[7], 25,28) |> 
+  pack_rows(ID[8], 29,32) |> 
+  footnote(
+    symbol = c("CV > 5.6% (cutoff value for acceptable CV, see study plan)")
+  )
+```
+
+### Context-level CV
+
+Table 5 further takes average across the CVs among same measuring contexts (fasting+visceral; fasting+abdominal; post-meal+visceral; post-meal + abdominal). The results indicate, regardless of time window for measuring, Dualscan gives consistent measurements for abdominal fat (mean CV = 0.036 for fasting, 0.040 for post-meal), whereas inconsistent measurements for visceral fat (mean CV = 0.206 for fasting, 0.208 for post-meal). 
+
+```{r}
+dualscan_summary_all <- 
+  dualscan_summary |> 
+  group_by(
+    time_window,
+    fat_type,
+    ) |> 
+  summarise(
+    cv_fat_mean = mean(cv_fat),
+    cv_fat_sd = sd(cv_fat)
+    ) |> 
+  #dplyr::select(
+    #ID,
+    #gender,
+    #age,
+    #BMI,
+    #everything()
+  #)|> 
+  mutate_if(is.numeric, function(x)round(x,3)) |> 
+  as.data.frame()
+```
+
+```{r}
+dualscan_summary_all |> 
+  rename(
+    'Measuring time' = time_window,
+    'Measuring location' = fat_type,
+    'Average CV' = cv_fat_mean,
+    'SD of CV' = cv_fat_sd
+  ) |> 
+  kable(
+    format = "latex",
+    booktabs = T,
+    escape = T,
+    caption = 
+      "CVs averaging across 4 type of measuring contexts"
+  ) |> 
+  kable_styling(
+    #full_width = T
+    bootstrap_options = "condensed"
+  ) |> 
+  footnote(
+    symbol = c("CV > 5.6% (cutoff value for acceptable CV, see study plan)")
+  )
+```
+
+# Conclusion
+
+Dualscan gives stable estimates of abdominal fat area, while less stable estimates of visceral fat area.
